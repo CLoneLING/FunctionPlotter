@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit
 
 class UpdateManager(private val context: Context) {
 
-    private val owner = "GITHUB_OWNER"
-    private val repo = "GITHUB_REPO"
+    private val owner = "CLoneLING"
+    private val repo = "FunctionPlotter"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
