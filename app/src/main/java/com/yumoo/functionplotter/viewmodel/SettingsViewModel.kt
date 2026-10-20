@@ -45,6 +45,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _updateInfo = MutableStateFlow<UpdateResult.Available?>(null)
     val updateInfo: StateFlow<UpdateResult.Available?> = _updateInfo.asStateFlow()
 
+    private val _downloadProgress = MutableStateFlow<Int?>(null)
+    val downloadProgress: StateFlow<Int?> = _downloadProgress.asStateFlow()
+
     fun setThemeMode(v: Int) = viewModelScope.launch { repo.setThemeMode(v) }
     fun setShowGrid(v: Boolean) = viewModelScope.launch { repo.setShowGrid(v) }
     fun setShowAxisLabels(v: Boolean) = viewModelScope.launch { repo.setShowAxisLabels(v) }
@@ -59,7 +62,20 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissUpdateDialog() { _updateInfo.value = null }
 
-    fun downloadUpdate(url: String) { updateManager.downloadApk(url) }
+    fun startDownload(url: String) {
+        _downloadProgress.value = 0
+        val id = updateManager.downloadApk(url)
+        viewModelScope.launch {
+            updateManager.observeProgress(id).collect { p ->
+                _downloadProgress.value = p
+            }
+        }
+    }
 
-    fun installDownloaded() { updateManager.installDownloadedApk() }
+    fun dismissDownload() { _downloadProgress.value = null }
+
+    fun installDownloaded() {
+        updateManager.installDownloadedApk()
+        _downloadProgress.value = null
+    }
 }

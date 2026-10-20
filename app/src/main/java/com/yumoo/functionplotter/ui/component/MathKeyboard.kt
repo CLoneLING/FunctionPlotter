@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +19,6 @@ import androidx.compose.ui.unit.sp
 private data class CalcKey(
     val label: String,
     val insert: String? = null,
-    val isPlot: Boolean = false,
     val isBackspace: Boolean = false,
     val isClear: Boolean = false,
     val isFunction: Boolean = false
@@ -30,8 +28,7 @@ private data class CalcKey(
 fun MathKeyboard(
     onKey: (String) -> Unit,
     onBackspace: () -> Unit,
-    onClear: () -> Unit,
-    onPlot: () -> Unit
+    onClear: () -> Unit
 ) {
     val rows: List<List<CalcKey>> = listOf(
         listOf(
@@ -52,13 +49,11 @@ fun MathKeyboard(
         ),
         listOf(
             CalcKey("1", "1"), CalcKey("2", "2"), CalcKey("3", "3"),
-            CalcKey("-", "-"), CalcKey("π", "pi"), CalcKey("e", "e")
+            CalcKey("-", "-"), CalcKey("π", "pi"), CalcKey("y", "y")
         ),
         listOf(
             CalcKey("0", "0"), CalcKey(".", "."), CalcKey("+", "+"),
-            CalcKey("=", isPlot = true),
-            CalcKey("⌫", isBackspace = true),
-            CalcKey("C", isClear = true)
+            CalcKey("=", "="), CalcKey("⌫", isBackspace = true), CalcKey("清空", isClear = true)
         )
     )
 
@@ -67,7 +62,6 @@ fun MathKeyboard(
             Row(modifier = Modifier.fillMaxWidth()) {
                 row.forEach { key ->
                     val onClick: () -> Unit = when {
-                        key.isPlot -> onPlot
                         key.isBackspace -> onBackspace
                         key.isClear -> onClear
                         else -> {
@@ -75,29 +69,11 @@ fun MathKeyboard(
                             { if (ins != null) onKey(ins) }
                         }
                     }
-
-                    val isAccent = key.isPlot
-                    val modifier = Modifier
-                        .weight(1f)
-                        .padding(2.dp)
-                        .height(46.dp)
-
+                    val modifier = Modifier.weight(1f).padding(2.dp).height(46.dp)
                     val content: @Composable () -> Unit = {
-                        Text(
-                            key.label,
-                            fontSize = if (key.label.length >= 3) 12.sp else 16.sp,
-                            maxLines = 1
-                        )
+                        Text(key.label, fontSize = if (key.label.length >= 3) 12.sp else 16.sp, maxLines = 1)
                     }
-
-                    if (isAccent) {
-                        Button(
-                            onClick = onClick,
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(0.dp),
-                            modifier = modifier
-                        ) { content() }
-                    } else if (key.isFunction) {
+                    if (key.isFunction) {
                         FilledTonalButton(
                             onClick = onClick,
                             shape = RoundedCornerShape(12.dp),

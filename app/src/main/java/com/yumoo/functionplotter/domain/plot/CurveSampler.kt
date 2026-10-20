@@ -27,41 +27,25 @@ fun buildCurvePath(
 
     var started = false
     var screenX = 0f
-    val step = if (sampleStep.isFinite() && sampleStep >= 1f) sampleStep else 2f
-    val maxIter = (width / step).toInt() + 200
+    val step = if (sampleStep.isFinite()) sampleStep.coerceIn(1.5f, 8f) else 2f
+    val maxIter = (width / step).toInt() + 50
     var safety = 0
 
     while (screenX <= width && safety < maxIter) {
         val mathX: Double = ((screenX - viewport.centerX) / viewport.scale).toDouble()
-
-        if (!mathX.isFinite()) {
-            started = false
-            screenX += step
-            safety++
-            continue
-        }
+        if (!mathX.isFinite()) { started = false; screenX += step; safety++; continue }
 
         val mathY: Double = evaluator.evaluate(expression, mathX)
-
         if (mathY.isNaN() || mathY.isInfinite()) {
-            started = false
-            screenX += step
-            safety++
-            continue
+            started = false; screenX += step; safety++; continue
         }
 
         val screenY = viewport.centerY - mathY.toFloat() * viewport.scale
-
         if (screenY.isFinite() && abs(screenY) < 1e6f) {
-            if (!started) {
-                path.moveTo(screenX, screenY)
-                started = true
-            } else {
-                path.lineTo(screenX, screenY)
-            }
-        } else {
-            started = false
-        }
+            if (!started) { path.moveTo(screenX, screenY); started = true }
+            else path.lineTo(screenX, screenY)
+        } else started = false
+
         screenX += step
         safety++
     }

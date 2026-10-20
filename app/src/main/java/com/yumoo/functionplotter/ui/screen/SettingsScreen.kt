@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yumoo.functionplotter.BuildConfig
 import com.yumoo.functionplotter.data.update.UpdateResult
+import com.yumoo.functionplotter.ui.component.DownloadProgressDialog
 import com.yumoo.functionplotter.ui.component.UpdateDialog
 import com.yumoo.functionplotter.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -46,6 +47,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val updateInfo by viewModel.updateInfo.collectAsState()
+    val downloadProgress by viewModel.downloadProgress.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -55,7 +57,7 @@ fun SettingsScreen(
                 title = { Text("设置") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -110,17 +112,12 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("立即检查更新") }
-                Button(
-                    onClick = { viewModel.installDownloaded() },
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("安装已下载的更新") }
             }
 
             SectionCard("关于") {
                 Text("FunctionPlotter", style = MaterialTheme.typography.titleMedium)
-                Text("项目主页：待发布后填入 GitHub 地址")
-                Text("开源许可：Apache-2.0（可按需调整）")
+                Text("项目主页：Github - CLoneLING/FunctionPlotter")
+                Text("开源许可：MIT License")
             }
         }
 
@@ -129,19 +126,25 @@ fun SettingsScreen(
                 info = updateInfo!!,
                 onDismiss = viewModel::dismissUpdateDialog,
                 onDownload = {
-                    viewModel.downloadUpdate(updateInfo!!.downloadUrl)
+                    val url = updateInfo!!.downloadUrl
                     viewModel.dismissUpdateDialog()
-                    scope.launch {
-                        snackbar.showSnackbar("已开始下载，完成后请在设置页点“安装已下载的更新”")
-                    }
+                    viewModel.startDownload(url)
                 }
+            )
+        }
+
+        if (downloadProgress != null) {
+            DownloadProgressDialog(
+                progress = downloadProgress,
+                onDismiss = viewModel::dismissDownload,
+                onInstall = viewModel::installDownloaded
             )
         }
     }
 }
 
 @Composable
-fun SectionCard(title: String, content: @Composable () -> Unit) {
+private fun SectionCard(title: String, content: @Composable () -> Unit) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 1.dp,
@@ -158,7 +161,7 @@ fun SectionCard(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
