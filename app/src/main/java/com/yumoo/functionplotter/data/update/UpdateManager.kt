@@ -4,7 +4,6 @@ import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.FileProvider
@@ -26,11 +25,11 @@ class UpdateManager(private val context: Context) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .addInterceptor { chain ->
-            val req = chain.request().newBuilder()
+            val request = chain.request().newBuilder()
                 .header("User-Agent", "FunctionPlotter-Android")
                 .header("Accept", "application/vnd.github+json")
                 .build()
-            chain.proceed(req)
+            chain.proceed(request)
         }
         .build()
 
@@ -44,90 +43,104 @@ class UpdateManager(private val context: Context) {
     suspend fun checkForUpdate(currentVersion: String): UpdateResult {
         return try {
             val release = api.getLatestRelease(owner, repo)
-            val latestTag = release.tagName.removePrefix("v").trim()
-            if (latestTag == currentVersion) return UpdateResult.UpToDate
+            val latestTag = (release.tagName ?: "").removePrefix("v").trim()
+            if (latestTag.isBlank() || !isNewerVersion(latestTag, currentVersion)) {
+                return UpdateResult.UpToDate
+            }
 
-            val apkAsset = release.assets.firstOrNull {
-                it.name.endsWith(".apk", ignoreCase = true)
+            val apkAsset = release.assets.orEmpty().firstOrNull {
+                it.name?.endsWith(".apk", ignoreCase = true) == true
             } ?: return UpdateResult.NoApkFound
+            val downloadUrl = apkAsset.browserDownloadUrl ?: return UpdateResult.NoApkFound
 
             UpdateResult.Available(
                 version = latestTag,
-                notes = release.body,
-                downloadUrl = apkAsset.browserDownloadUrl,
-                htmlUrl = release.htmlUrl
+                notes = release.body ?: "",
+                downloadUrl = downloadUrl,
+                htmlUrl = release.htmlUrl ?: ""
             )
         } catch (e: Exception) {
             UpdateResult.Error(e.message ?: "网络请求失败")
         }
     }
 
+    /** 是否已允许"安装未知来源应用"。minSdk 26，API 一定存在。 */
+    fun canInstallPackages(): Boolean = try {
+        context.packageManager.canRequestPackageInstalls()
+    } catch (e: Exception) {
+        false
+    }
+
+    fun installPermissionIntent(): Intent =
+        Intent(
+            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            Uri.parse("package:${context.packageName}")
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
     fun downloadApk(url: String): Long {
         val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle("下载更新")
+            .setTitle("FunctionPlotter 更新")
             .setDescription("正在下载新版本…")
-            .setNotificationVisibility(
-                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-            )
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setDestinationInExternalFilesDir(
                 context,
                 Environment.DIRECTORY_DOWNLOADS,
-                "update.apk"
+                APK_FILE_NAME
             )
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        return dm.enqueue(request)
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        return manager.enqueue(request)
     }
 
     fun observeProgress(downloadId: Long): Flow<Int> = flow {
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        var missingRounds = 0
         while (true) {
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            val cursor = dm.query(query)
-            if (cursor.moveToFirst()) {
-                val downloaded = cursor.getLong(
-                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                )
-                val total = cursor.getLong(
-                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                )
-                val status = cursor.getInt(
-                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
-                )
-                if (total > 0) {
-                    emit((downloaded * 100 / total).toInt().coerceIn(0, 100))
+            val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
+            try {
+                if (cursor.moveToFirst()) {
+                    missingRounds = 0
+                    val downloaded = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    )
+                    val total = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    )
+                    val status = cursor.getInt(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
+                    )
+                    if (total > 0) {
+                        emit((downloaded * 100 / total).toInt().coerceIn(0, 100))
+                    }
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        emit(100)
+                        return@flow
+                    }
+                    if (status == DownloadManager.STATUS_FAILED) {
+                        emit(-1)
+                        return@flow
+                    }
+                } else {
+                    // 下载记录被清理或任务已不存在，避免无限轮询
+                    missingRounds++
+                    if (missingRounds > 5) {
+                        emit(-1)
+                        return@flow
+                    }
                 }
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    emit(100)
-                    cursor.close()
-                    return@flow
-                }
-                if (status == DownloadManager.STATUS_FAILED) {
-                    emit(-1)
-                    cursor.close()
-                    return@flow
-                }
+            } finally {
+                cursor.close()
             }
-            cursor.close()
-            delay(300)
+            delay(400)
         }
     }
 
-    fun installDownloadedApk() {
-        val apkFile = File(
-            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-            "update.apk"
-        )
-        if (!apkFile.exists()) return
+    fun installDownloadedApk(): Boolean {
+        val apkFile = downloadedApkFile()
+        if (!apkFile.exists()) return false
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            !context.packageManager.canRequestPackageInstalls()
-        ) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:${context.packageName}")
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-            return
+        if (!canInstallPackages()) {
+            context.startActivity(installPermissionIntent())
+            return false
         }
 
         val uri = FileProvider.getUriForFile(
@@ -141,5 +154,15 @@ class UpdateManager(private val context: Context) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(intent)
+        return true
+    }
+
+    private fun downloadedApkFile(): File = File(
+        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+        APK_FILE_NAME
+    )
+
+    companion object {
+        private const val APK_FILE_NAME = "FunctionPlotter-update.apk"
     }
 }

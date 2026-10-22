@@ -26,6 +26,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val selectedFunctionId = dataStore.data.map { it[KEY_SELECTED_ID] ?: -1L }
     val draftExpression = dataStore.data.map { it[KEY_DRAFT] ?: "" }
 
+    /** 上次成功检查更新的时间（毫秒），用于"启动时自动检查"的节流。 */
+    val lastUpdateCheck = dataStore.data.map { it[KEY_LAST_UPDATE_CHECK] ?: 0L }
+
+    /** 正在进行的下载任务 id，进程被杀后重新进入应用可以继续跟踪进度。 */
+    val pendingDownloadId = dataStore.data.map { it[KEY_PENDING_DOWNLOAD] ?: -1L }
+
     suspend fun setThemeMode(v: Int) = dataStore.edit { it[KEY_THEME_MODE] = v }
     suspend fun setShowGrid(v: Boolean) = dataStore.edit { it[KEY_SHOW_GRID] = v }
     suspend fun setShowAxisLabels(v: Boolean) = dataStore.edit { it[KEY_SHOW_AXIS_LABELS] = v }
@@ -36,6 +42,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setSelectedFunctionId(v: Long) = dataStore.edit { it[KEY_SELECTED_ID] = v }
     suspend fun setDraftExpression(v: String) = dataStore.edit { it[KEY_DRAFT] = v }
 
+    suspend fun setLastUpdateCheck(v: Long) = dataStore.edit { it[KEY_LAST_UPDATE_CHECK] = v }
+    suspend fun setPendingDownloadId(v: Long) = dataStore.edit { it[KEY_PENDING_DOWNLOAD] = v }
+
     companion object {
         private val KEY_THEME_MODE = intPreferencesKey("theme_mode")
         private val KEY_SHOW_GRID = booleanPreferencesKey("show_grid")
@@ -45,5 +54,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_FUNCTIONS_JSON = stringPreferencesKey("functions_json")
         private val KEY_SELECTED_ID = longPreferencesKey("selected_function_id")
         private val KEY_DRAFT = stringPreferencesKey("draft_expression")
+        private val KEY_LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
+        private val KEY_PENDING_DOWNLOAD = longPreferencesKey("pending_download_id")
     }
 }

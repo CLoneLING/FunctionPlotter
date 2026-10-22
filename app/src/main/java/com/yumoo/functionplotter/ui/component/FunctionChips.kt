@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,33 +41,45 @@ fun FunctionChips(
     onRemove: (Long) -> Unit,
     onAdd: () -> Unit,
     canAdd: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    invalidIds: Set<Long> = emptySet()
 ) {
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
     ) {
-        items(functions, key = { it.id }) { f ->
-            val selected = f.id == selectedId
+        items(functions, key = { it.id }) { function ->
+            val selected = function.id == selectedId
+            val broken = function.id in invalidIds
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (selected) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.clickable { onSelect(f.id) }
+                modifier = Modifier.clickable { onSelect(function.id) }
             ) {
                 Row(
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         Modifier
                             .size(10.dp)
-                            .background(Color(f.colorArgb), CircleShape)
+                            .background(Color(function.colorArgb), CircleShape)
                     )
                     Spacer(Modifier.width(6.dp))
+                    if (broken) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "表达式有误",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .size(13.dp)
+                                .padding(end = 2.dp)
+                        )
+                    }
                     Text(
-                        f.expression.ifBlank { "(空)" },
+                        function.expression.ifBlank { "(空)" },
                         fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -74,7 +87,7 @@ fun FunctionChips(
                     )
                     if (functions.size > 1) {
                         IconButton(
-                            onClick = { onRemove(f.id) },
+                            onClick = { onRemove(function.id) },
                             modifier = Modifier.size(20.dp)
                         ) {
                             Icon(

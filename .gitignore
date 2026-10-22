@@ -9,7 +9,15 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/build/
 /captures
 .externalNativeBuild
 .cxx
+.kotlin/
+app/build/
+app/release/
 local.properties
+# 签名口令不进版本库
+keystore.properties
+*.jks
+*.keystore

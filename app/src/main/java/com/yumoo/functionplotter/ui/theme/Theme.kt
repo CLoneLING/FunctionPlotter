@@ -29,5 +29,9 @@ fun FunctionPlotterTheme(
             onSurface = LightOnSurface
         )
     }
-    MaterialTheme(colorScheme = colors, content = content)
+    MaterialTheme(
+        colorScheme = colors,
+        typography = AppTypography,
+        content = content
+    )
 }

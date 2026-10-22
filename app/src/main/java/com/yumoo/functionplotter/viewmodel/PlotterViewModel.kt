@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 @OptIn(FlowPreview::class)
 class PlotterViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = (app as FunctionPlotterApp).settingsRepository
+    private val repository = (app as FunctionPlotterApp).settingsRepository
     private val gson = Gson()
 
     private var nextId = 1L
@@ -29,12 +29,12 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedId = MutableStateFlow(1L)
     val selectedId: StateFlow<Long> = _selectedId.asStateFlow()
 
-    private val _draft = MutableStateFlow("x^2")
+    private val _draft = MutableStateFlow(DEFAULT_EXPRESSION)
     val draft: StateFlow<String> = _draft.asStateFlow()
 
-    val showGrid = repo.showGrid
-    val showAxisLabels = repo.showAxisLabels
-    val sampleStep = repo.sampleStep
+    val showGrid = repository.showGrid
+    val showAxisLabels = repository.showAxisLabels
+    val sampleStep = repository.sampleStep
 
     init {
         restoreAndObserve()
@@ -43,32 +43,31 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     private fun restoreAndObserve() {
         viewModelScope.launch {
             // 1. 读取本地快照
-            val savedJson = repo.functionsJson.first()
-            val savedId = repo.selectedFunctionId.first()
-            val savedDraft = repo.draftExpression.first()
+            val savedJson = repository.functionsJson.first()
+            val savedId = repository.selectedFunctionId.first()
+            val savedDraft = repository.draftExpression.first()
 
             // 2. 恢复内存状态
-            val list = parseSaved(savedJson) ?: defaultFunctions()
-            _functions.value = list
-            _selectedId.value = list.firstOrNull { it.id == savedId }?.id ?: list.first().id
-            _draft.value = savedDraft.ifBlank {
-                list.firstOrNull { it.id == _selectedId.value }?.expression ?: ""
-            }
-            nextId = (list.maxOfOrNull { it.id } ?: 0L) + 1L
+            val restored = parseSaved(savedJson) ?: defaultFunctions()
+            _functions.value = restored
+            val restoredSelection = restored.firstOrNull { it.id == savedId } ?: restored.first()
+            _selectedId.value = restoredSelection.id
+            _draft.value = savedDraft.ifBlank { restoredSelection.expression }
+            nextId = (restored.maxOfOrNull { it.id } ?: 0L) + 1L
 
             // 3. 函数列表与选中项：低频变化，立即写
             launch {
-                combine(_functions, _selectedId) { f, id -> f to id }
-                    .collect { (f, id) ->
-                        repo.setFunctionsJson(gson.toJson(f))
-                        repo.setSelectedFunctionId(id)
+                combine(_functions, _selectedId) { list, id -> list to id }
+                    .collect { (list, id) ->
+                        repository.setFunctionsJson(gson.toJson(list))
+                        repository.setSelectedFunctionId(id)
                     }
             }
 
             // 4. 草稿：高频变化，防抖 300ms 后写
             launch {
                 _draft.debounce(300).collect {
-                    repo.setDraftExpression(it)
+                    repository.setDraftExpression(it)
                 }
             }
         }
@@ -77,24 +76,39 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     private fun parseSaved(json: String): List<PlotFunction>? {
         if (json.isBlank()) return null
         return try {
-            val arr = gson.fromJson(json, Array<PlotFunction>::class.java) ?: return null
-            arr.toList().filterNotNull().takeIf { it.isNotEmpty() }
+            val array = gson.fromJson(json, Array<PlotFunction>::class.java) ?: return null
+            array.toList().filterNotNull().takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
             null
         }
     }
 
-    fun onDraftChange(v: String) { _draft.value = v }
+    fun onDraftChange(value: String) {
+        _draft.value = value
+    }
 
-    fun appendToDraft(v: String) { _draft.value += v }
+    fun appendToDraft(value: String) {
+        _draft.value += value
+    }
 
-    fun backspace() { _draft.value = _draft.value.dropLast(1) }
+    fun replaceDraft(value: String) {
+        _draft.value = value
+    }
 
-    fun clearDraft() { _draft.value = "" }
+    fun backspace() {
+        _draft.value = _draft.value.dropLast(1)
+    }
 
+    fun clearDraft() {
+        _draft.value = ""
+    }
+
+    /**
+     * 应用草稿。允许空表达式：这样才能把某条曲线"清空"，
+     * 旧实现遇到空白直接 return，用户只能删掉整条函数。
+     */
     fun applyDraft() {
         val text = _draft.value.trim()
-        if (text.isBlank()) return
         val id = _selectedId.value
         _functions.value = _functions.value.map {
             if (it.id == id) it.copy(expression = text) else it
@@ -104,8 +118,9 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     fun addFunction() {
         if (_functions.value.size >= MAX_FUNCTIONS) return
         val id = nextId++
-        val color = PALETTE[_functions.value.size % PALETTE.size]
-        _functions.value = _functions.value + PlotFunction(id, "", color)
+        val used = _functions.value.map { it.colorArgb }.toSet()
+        val color = PALETTE.firstOrNull { it !in used } ?: PALETTE[_functions.value.size % PALETTE.size]
+        _functions.value = _functions.value + PlotFunction(id = id, expression = "", colorArgb = color)
         _selectedId.value = id
         _draft.value = ""
     }
@@ -132,9 +147,12 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun defaultFunctions(): List<PlotFunction> =
-        listOf(PlotFunction(id = 1L, expression = "x^2", colorArgb = PALETTE[0]))
+        listOf(PlotFunction(id = 1L, expression = DEFAULT_EXPRESSION, colorArgb = PALETTE[0]))
 
     companion object {
+        /** 首次启动时的默认函数。 */
+        private const val DEFAULT_EXPRESSION = "x^2"
+
         const val MAX_FUNCTIONS = 5
         val PALETTE = longArrayOf(
             0xFF3A7BD5,

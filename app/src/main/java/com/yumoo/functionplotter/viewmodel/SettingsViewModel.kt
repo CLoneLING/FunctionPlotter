@@ -3,14 +3,9 @@ package com.yumoo.functionplotter.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.yumoo.functionplotter.BuildConfig
 import com.yumoo.functionplotter.FunctionPlotterApp
-import com.yumoo.functionplotter.data.update.UpdateManager
-import com.yumoo.functionplotter.data.update.UpdateResult
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,15 +20,14 @@ data class SettingsUiState(
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = (app as FunctionPlotterApp).settingsRepository
-    private val updateManager = UpdateManager(app)
+    private val repository = (app as FunctionPlotterApp).settingsRepository
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        repo.themeMode,
-        repo.showGrid,
-        repo.showAxisLabels,
-        repo.autoCheckUpdate,
-        repo.sampleStep
+        repository.themeMode,
+        repository.showGrid,
+        repository.showAxisLabels,
+        repository.autoCheckUpdate,
+        repository.sampleStep
     ) { theme, grid, labels, auto, step ->
         SettingsUiState(theme, grid, labels, auto, step)
     }.stateIn(
@@ -42,40 +36,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         SettingsUiState()
     )
 
-    private val _updateInfo = MutableStateFlow<UpdateResult.Available?>(null)
-    val updateInfo: StateFlow<UpdateResult.Available?> = _updateInfo.asStateFlow()
-
-    private val _downloadProgress = MutableStateFlow<Int?>(null)
-    val downloadProgress: StateFlow<Int?> = _downloadProgress.asStateFlow()
-
-    fun setThemeMode(v: Int) = viewModelScope.launch { repo.setThemeMode(v) }
-    fun setShowGrid(v: Boolean) = viewModelScope.launch { repo.setShowGrid(v) }
-    fun setShowAxisLabels(v: Boolean) = viewModelScope.launch { repo.setShowAxisLabels(v) }
-    fun setAutoCheckUpdate(v: Boolean) = viewModelScope.launch { repo.setAutoCheckUpdate(v) }
-    fun setSampleStep(v: Float) = viewModelScope.launch { repo.setSampleStep(v) }
-
-    suspend fun checkForUpdate(): UpdateResult {
-        val result = updateManager.checkForUpdate(BuildConfig.VERSION_NAME)
-        if (result is UpdateResult.Available) _updateInfo.value = result
-        return result
-    }
-
-    fun dismissUpdateDialog() { _updateInfo.value = null }
-
-    fun startDownload(url: String) {
-        _downloadProgress.value = 0
-        val id = updateManager.downloadApk(url)
-        viewModelScope.launch {
-            updateManager.observeProgress(id).collect { p ->
-                _downloadProgress.value = p
-            }
-        }
-    }
-
-    fun dismissDownload() { _downloadProgress.value = null }
-
-    fun installDownloaded() {
-        updateManager.installDownloadedApk()
-        _downloadProgress.value = null
-    }
+    fun setThemeMode(value: Int) = viewModelScope.launch { repository.setThemeMode(value) }
+    fun setShowGrid(value: Boolean) = viewModelScope.launch { repository.setShowGrid(value) }
+    fun setShowAxisLabels(value: Boolean) = viewModelScope.launch { repository.setShowAxisLabels(value) }
+    fun setAutoCheckUpdate(value: Boolean) = viewModelScope.launch { repository.setAutoCheckUpdate(value) }
+    fun setSampleStep(value: Float) = viewModelScope.launch { repository.setSampleStep(value) }
 }

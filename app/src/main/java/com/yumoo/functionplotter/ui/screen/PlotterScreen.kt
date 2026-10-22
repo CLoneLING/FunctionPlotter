@@ -18,22 +18,36 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
+import com.yumoo.functionplotter.domain.parser.ExpressionCheck
+import com.yumoo.functionplotter.domain.parser.checkExpression
 import com.yumoo.functionplotter.ui.component.ExpressionInput
 import com.yumoo.functionplotter.ui.component.FunctionCanvas
 import com.yumoo.functionplotter.ui.component.FunctionChips
 import com.yumoo.functionplotter.ui.component.MathKeyboard
+import com.yumoo.functionplotter.ui.component.UpdateBanner
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
+import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 
 @Composable
 fun PlotterScreen(
     viewModel: PlotterViewModel,
+    updateViewModel: UpdateViewModel,
     onNavigateToSettings: () -> Unit,
     onNavigateToInfo: () -> Unit
 ) {
@@ -44,6 +58,30 @@ fun PlotterScreen(
     val showAxisLabels by viewModel.showAxisLabels.collectAsState(initial = true)
     val sampleStep by viewModel.sampleStep.collectAsState(initial = 2f)
 
+    val evaluator = remember { Exp4jEvaluator() }
+    val draftError = remember(draft) {
+        if (draft.isBlank()) {
+            null
+        } else {
+            (checkExpression(draft, evaluator) as? ExpressionCheck.Invalid)?.message
+        }
+    }
+
+    var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
+    // 启动时自动检查更新（受设置里的开关控制，24 小时内不重复）
+    LaunchedEffect(Unit) { updateViewModel.autoCheckOnce() }
+
+    // 从系统「安装未知应用」设置返回后，如果已授权就自动开始下载
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) updateViewModel.onResume()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,7 +89,6 @@ fun PlotterScreen(
             .systemBarsPadding()
             .padding(horizontal = 8.dp)
     ) {
-        // 顶部一行：函数 chip 栏 + 设置/信息小圆钮（并排，不重叠）
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -62,6 +99,7 @@ fun PlotterScreen(
             FunctionChips(
                 functions = functions,
                 selectedId = selectedId,
+                invalidIds = invalidIds,
                 onSelect = viewModel::selectFunction,
                 onRemove = viewModel::removeFunction,
                 onAdd = viewModel::addFunction,
@@ -82,9 +120,12 @@ fun PlotterScreen(
 
         ExpressionInput(
             value = draft,
+            error = draftError,
             onValueChange = viewModel::onDraftChange,
             onPlot = viewModel::applyDraft
         )
+
+        UpdateBanner(viewModel = updateViewModel)
 
         Box(
             modifier = Modifier
@@ -96,14 +137,16 @@ fun PlotterScreen(
                 showGrid = showGrid,
                 showAxisLabels = showAxisLabels,
                 sampleStep = sampleStep,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onInvalidIdsChange = { invalidIds = it }
             )
         }
 
         MathKeyboard(
             onKey = viewModel::appendToDraft,
             onBackspace = viewModel::backspace,
-            onClear = viewModel::clearDraft
+            onClear = viewModel::clearDraft,
+            onReplace = viewModel::replaceDraft
         )
     }
 }

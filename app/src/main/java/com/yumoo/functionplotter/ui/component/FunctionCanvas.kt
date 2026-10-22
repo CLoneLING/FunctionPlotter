@@ -3,26 +3,31 @@ package com.yumoo.functionplotter.ui.component
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -34,174 +39,255 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yumoo.functionplotter.data.model.PlotFunction
 import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
 import com.yumoo.functionplotter.domain.parser.PlotExpression
 import com.yumoo.functionplotter.domain.parser.parsePlotExpression
+import com.yumoo.functionplotter.domain.plot.PlotFrame
 import com.yumoo.functionplotter.domain.plot.PlotViewport
-import com.yumoo.functionplotter.domain.plot.buildCurvePath
-import com.yumoo.functionplotter.domain.plot.buildImplicitPath
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
+import com.yumoo.functionplotter.domain.plot.asPiFraction
+import com.yumoo.functionplotter.domain.plot.buildPlotFrame
+import com.yumoo.functionplotter.domain.plot.snapToPiMultiple
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
-import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
 
-private const val MIN_SCALE = 10f
-private const val MAX_SCALE = 500f
-private const val MAX_LIVE_SCALE = 10f
+private const val DEFAULT_SCALE = 60f
+private const val MIN_SCALE = 8f
+private const val MAX_SCALE = 900f
 
-private sealed class DrawItem {
-    data class ExplicitItem(val id: Long, val path: Path, val colorArgb: Long) : DrawItem()
-    data class ImplicitItem(val id: Long, val path: Path, val colorArgb: Long) : DrawItem()
+/** 单次手势内允许的最大临时缩放，松手时再落定到真实倍率。 */
+private const val MAX_LIVE_ZOOM = 4f
+
+/** 相机中心允许的最大世界坐标；超过后平移会被截断，彻底避免浮点溢出。 */
+private const val MAX_WORLD = 1_000_000f
+
+/** 手势期间允许的最大像素位移，同样是为了防止累加溢出。 */
+private const val MAX_TRANSLATION = 40_000_000f
+
+private data class Camera(val x: Float, val y: Float, val scale: Float) {
+    companion object {
+        val Default = Camera(0f, 0f, DEFAULT_SCALE)
+    }
 }
 
 private data class TapInfo(
     val screen: Offset,
-    val mathX: Float,
-    val mathY: Float,
+    val worldX: Float,
+    val worldY: Float,
     val colorArgb: Long
 )
 
-@OptIn(FlowPreview::class)
+/**
+ * 函数图绘制区。
+ *
+ * 线程模型：
+ *  - 曲线路径在 Dispatchers.Default 上计算，produceState 会自动取消过期任务，
+ *    主线程只负责绘制；
+ *  - 手势期间不重算路径，只用 graphicsLayer 做 GPU 变换；
+ *  - 网格、坐标轴、刻度、比例尺直接按"实时视口"在屏幕空间绘制，
+ *    任何倍率下都清晰，且不会因为坐标轴拖到极远处而画出非法坐标。
+ */
 @Composable
 fun FunctionCanvas(
     functions: List<PlotFunction>,
     showGrid: Boolean,
     showAxisLabels: Boolean,
     sampleStep: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onInvalidIdsChange: (Set<Long>) -> Unit = {}
 ) {
     val evaluator = remember { Exp4jEvaluator() }
-    val textMeasurer = rememberTextMeasurer()
+    val textMeasurer = rememberTextMeasurer(cacheSize = 32)
 
-    var committedScale by remember { mutableFloatStateOf(60f) }
-    var committedOffset by remember { mutableStateOf(Offset.Zero) }
-    var liveScale by remember { mutableFloatStateOf(1f) }
-    var liveOffset by remember { mutableStateOf(Offset.Zero) }
-    var gestureActive by remember { mutableStateOf(false) }
-    var sizePx by remember { mutableStateOf(IntSize.Zero) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var camera by remember { mutableStateOf(Camera.Default) }
+    var liveZoom by remember { mutableFloatStateOf(1f) }
+    var livePan by remember { mutableStateOf(Offset.Zero) }
     var tapInfo by remember { mutableStateOf<TapInfo?>(null) }
 
-    val canvasCenterX = if (sizePx.width > 0) sizePx.width / 2f else 0f
-    val canvasCenterY = if (sizePx.height > 0) sizePx.height / 2f else 0f
+    val width = canvasSize.width.toFloat()
+    val height = canvasSize.height.toFloat()
+    val hasSize = canvasSize.width > 0 && canvasSize.height > 0
 
-    val committedCenterX = canvasCenterX + committedOffset.x
-    val committedCenterY = canvasCenterY + committedOffset.y
-    val committedViewport = PlotViewport(committedCenterX, committedCenterY, committedScale)
-
-    // 实时视口：GPU 变换后数学 0 点的真实屏幕位置
-    val liveCenterX = canvasCenterX + liveOffset.x + committedOffset.x * liveScale
-    val liveCenterY = canvasCenterY + liveOffset.y + committedOffset.y * liveScale
-    val liveTotalScale = (committedScale * liveScale).coerceIn(MIN_SCALE, MAX_SCALE)
-    val liveViewport = PlotViewport(liveCenterX, liveCenterY, liveTotalScale)
-
-    // Path 仅依赖 committed，手势期间不重算
-    val drawItems = remember(functions, committedViewport, sizePx, sampleStep) {
-        buildDrawItems(evaluator, functions, committedViewport, sizePx, sampleStep)
+    val frame by produceState(
+        initialValue = PlotFrame.Empty,
+        functions,
+        camera,
+        canvasSize,
+        sampleStep
+    ) {
+        if (!hasSize) return@produceState
+        val viewport = PlotViewport(camera.x, camera.y, camera.scale, width, height)
+        value = withContext(Dispatchers.Default) {
+            try {
+                buildPlotFrame(evaluator, functions, viewport, sampleStep)
+            } catch (t: Throwable) {
+                // 绘图永远不应该让应用崩溃：异常时保留上一帧
+                PlotFrame.Empty
+            }
+        }
     }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow { Triple(gestureActive, liveScale, liveOffset) }
-            .debounce(120)
-            .collect { (active, s, o) ->
-                if (!active && (s != 1f || o != Offset.Zero)) {
-                    committedScale = (committedScale * s).coerceIn(MIN_SCALE, MAX_SCALE)
-                    committedOffset = Offset(
-                        (committedOffset.x + o.x).coerceIn(-100_000f, 100_000f),
-                        (committedOffset.y + o.y).coerceIn(-100_000f, 100_000f)
+    val invalidCallback by rememberUpdatedState(onInvalidIdsChange)
+    LaunchedEffect(frame.invalidIds) { invalidCallback(frame.invalidIds) }
+
+    // 视口一变，之前打的点就失效了，避免留下"幽灵标记"
+    LaunchedEffect(camera) { tapInfo = null }
+
+    fun commitTransform(w: Float, h: Float) {
+        if (w <= 0f || h <= 0f) {
+            liveZoom = 1f
+            livePan = Offset.Zero
+            return
+        }
+        val zoom = liveZoom
+        val denominator = camera.scale * zoom
+        if (!zoom.isFinite() || zoom <= 0f || !denominator.isFinite() || denominator <= 0f) {
+            liveZoom = 1f
+            livePan = Offset.Zero
+            return
+        }
+        val shiftX = (w / 2f) * (zoom - 1f) + livePan.x
+        val shiftY = (h / 2f) * (zoom - 1f) + livePan.y
+        val newCenterX = camera.x - shiftX / denominator
+        val newCenterY = camera.y + shiftY / denominator
+        camera = Camera(
+            x = if (newCenterX.isFinite()) newCenterX.coerceIn(-MAX_WORLD, MAX_WORLD) else camera.x,
+            y = if (newCenterY.isFinite()) newCenterY.coerceIn(-MAX_WORLD, MAX_WORLD) else camera.y,
+            scale = denominator.coerceIn(MIN_SCALE, MAX_SCALE)
+        )
+        liveZoom = 1f
+        livePan = Offset.Zero
+    }
+
+    val liveScale = (camera.scale * liveZoom).coerceIn(MIN_SCALE, MAX_SCALE)
+    val liveCenterX = camera.x -
+        (((width / 2f) * (liveZoom - 1f) + livePan.x) / liveScale)
+    val liveCenterY = camera.y +
+        (((height / 2f) * (liveZoom - 1f) + livePan.y) / liveScale)
+    val liveViewport = PlotViewport(liveCenterX, liveCenterY, liveScale, width, height)
+
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+    val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+    val labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+    val hintColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+    val tickStyle = remember(labelColor) { TextStyle(fontSize = 10.sp, color = labelColor) }
+    val markerBackground = MaterialTheme.colorScheme.surface
+    val markerTextStyle = remember(labelColor) { TextStyle(fontSize = 11.sp, color = labelColor) }
+    val markerSubTextStyle = remember(labelColor) {
+        TextStyle(fontSize = 9.sp, color = labelColor.copy(alpha = 0.65f))
+    }
+
+    val viewportState = rememberUpdatedState(liveViewport)
+    val functionsState = rememberUpdatedState(functions)
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { canvasSize = it }
+            .clipToBounds()
+    ) {
+        // 曲线层：GPU 变换，手势期间不重算
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = liveZoom
+                    scaleY = liveZoom
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    translationX = livePan.x
+                    translationY = livePan.y
+                }
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                frame.curves.forEach { curve ->
+                    drawPath(
+                        path = curve.path,
+                        color = Color(curve.colorArgb),
+                        style = Stroke(width = if (curve.implicit) 2.5f else 3.5f)
                     )
-                    liveScale = 1f
-                    liveOffset = Offset.Zero
-                }
-            }
-    }
-
-    val axisColor = Color.Gray
-    val labelColor = MaterialTheme.colorScheme.onSurface
-    val labelBg = MaterialTheme.colorScheme.surface
-
-    Box(modifier = modifier.onSizeChanged { sizePx = it }.clipToBounds()) {
-
-        // Layer 1：函数曲线（GPU 变换）
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = liveScale
-                    scaleY = liveScale
-                    translationX = liveOffset.x
-                    translationY = liveOffset.y
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
-                }
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawItems.forEach { item ->
-                    when (item) {
-                        is DrawItem.ExplicitItem ->
-                            drawPath(item.path, color = Color(item.colorArgb), style = Stroke(width = 4f))
-                        is DrawItem.ImplicitItem ->
-                            drawPath(item.path, color = Color(item.colorArgb), style = Stroke(width = 3f))
-                    }
-                }
-                tapInfo?.let { info ->
-                    val c = Color(info.colorArgb)
-                    drawCircle(c, radius = 8f, center = info.screen, style = Stroke(width = 3f))
-                    drawCircle(c, radius = 3f, center = info.screen)
                 }
             }
         }
 
-        // Layer 2：网格 + 刻度数字（GPU 变换）
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = liveScale
-                    scaleY = liveScale
-                    translationX = liveOffset.x
-                    translationY = liveOffset.y
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
-                }
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                if (showGrid) drawGrid(this, committedViewport, axisColor)
-                if (showAxisLabels) drawAxisLabels(this, committedViewport, labelColor, textMeasurer)
-            }
-        }
-
-        // Layer 3：坐标轴 + 比例尺（实时重绘，基于 liveViewport）
+        // 网格 + 坐标轴 + 刻度 + 比例尺：屏幕空间实时绘制
         Canvas(Modifier.fillMaxSize()) {
-            if (!liveViewport.scale.isFinite() || liveViewport.scale <= 0f) return@Canvas
-            if (!liveViewport.centerX.isFinite() || !liveViewport.centerY.isFinite()) return@Canvas
-            if (liveViewport.centerY in -1e5f..(size.height + 1e5f)) {
-                drawLine(axisColor, Offset(0f, liveViewport.centerY), Offset(size.width, liveViewport.centerY), 3f)
-            }
-            if (liveViewport.centerX in -1e5f..(size.width + 1e5f)) {
-                drawLine(axisColor, Offset(liveViewport.centerX, 0f), Offset(liveViewport.centerX, size.height), 3f)
-            }
-            drawScaleBar(textMeasurer, labelColor, liveViewport, size)
+            if (!liveViewport.isUsable) return@Canvas
+            if (showGrid) drawGridLayer(liveViewport, gridColor)
+            drawAxesLayer(liveViewport, axisColor)
+            if (showAxisLabels) drawTickLabels(liveViewport, textMeasurer, tickStyle)
+            drawScaleBar(liveViewport, textMeasurer, tickStyle, axisColor)
         }
 
-        // 坐标标签（非变换层，始终保持清晰）
+        // 点按读数：能写成 π 的有理倍数时，同时给出 π 形式与小数形式
         tapInfo?.let { info ->
             Canvas(Modifier.fillMaxSize()) {
-                val layout = textMeasurer.measure(
-                    "(${fmt(info.mathX)}, ${fmt(info.mathY)})",
-                    style = TextStyle(fontSize = 11.sp, color = labelColor)
-                )
-                val tx = (info.screen.x + 12f).coerceAtMost(size.width - layout.size.width - 8f)
-                val ty = (info.screen.y - layout.size.height - 12f).coerceAtLeast(4f)
+                val color = Color(info.colorArgb)
+                drawCircle(color, radius = 7f, center = info.screen, style = Stroke(width = 2.5f))
+                drawCircle(color, radius = 2.5f, center = info.screen)
+
+                val tolerance =
+                    if (liveViewport.isUsable) (0.6f / liveViewport.scale).toDouble() else 0.0
+                val piX = asPiFraction(info.worldX.toDouble(), tolerance)
+                val piY = asPiFraction(info.worldY.toDouble(), tolerance)
+                val decimalText = "(${fmt(info.worldX)}, ${fmt(info.worldY)})"
+                val piText = if (piX != null || piY != null) {
+                    "(${piX ?: fmt(info.worldX)}, ${piY ?: fmt(info.worldY)})"
+                } else {
+                    null
+                }
+
+                val mainLayout = textMeasurer.measure(piText ?: decimalText, markerTextStyle)
+                val subLayout =
+                    if (piText != null) textMeasurer.measure(decimalText, markerSubTextStyle) else null
+                val boxWidth = maxOf(mainLayout.size.width, subLayout?.size?.width ?: 0).toFloat()
+                val boxHeight =
+                    (mainLayout.size.height + (subLayout?.size?.height ?: 0)).toFloat()
+
+                val tx = (info.screen.x + 12f)
+                    .coerceAtMost(size.width - boxWidth - 12f)
+                    .coerceAtLeast(6f)
+                val ty = (info.screen.y - boxHeight - 12f)
+                    .coerceAtMost(size.height - boxHeight - 6f)
+                    .coerceAtLeast(6f)
+
                 drawRect(
-                    labelBg.copy(alpha = 0.92f),
+                    color = markerBackground.copy(alpha = 0.92f),
                     topLeft = Offset(tx - 4f, ty - 2f),
-                    size = Size(layout.size.width + 8f, layout.size.height + 4f)
+                    size = Size(boxWidth + 8f, boxHeight + 4f)
                 )
-                drawText(layout, topLeft = Offset(tx, ty))
+                drawText(mainLayout, topLeft = Offset(tx, ty))
+                if (subLayout != null) {
+                    drawText(subLayout, topLeft = Offset(tx, ty + mainLayout.size.height))
+                }
+            }
+        }
+
+        if (frame.curves.isEmpty() && functions.all { it.expression.isBlank() }) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "输入表达式开始绘图",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = hintColor
+                )
+                Text(
+                    text = "拖动平移 · 双指缩放 · 双击复位 · 点按读数",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = hintColor
+                )
             }
         }
 
@@ -210,170 +296,251 @@ fun FunctionCanvas(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures { pos ->
-                        if (!gestureActive) tapInfo = handleTap(evaluator, functions, committedViewport, pos)
-                    }
+                    detectTapGestures(
+                        onTap = { position ->
+                            tapInfo = hitTest(
+                                evaluator = evaluator,
+                                functions = functionsState.value,
+                                viewport = viewportState.value,
+                                screen = position
+                            )
+                        },
+                        onDoubleTap = {
+                            camera = Camera.Default
+                            liveZoom = 1f
+                            livePan = Offset.Zero
+                            tapInfo = null
+                        }
+                    )
                 }
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
-                        gestureActive = true
                         do {
                             val event = awaitPointerEvent()
-                            val pointerCount = event.changes.count { it.pressed }
-                            if (pointerCount >= 2) {
+                            val pressedPointers = event.changes.count { it.pressed }
+
+                            if (pressedPointers >= 2) {
                                 val zoom = event.calculateZoom()
                                 if (zoom.isFinite() && zoom > 0f && zoom != 1f) {
-                                    val newTotal = (committedScale * liveScale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                                    val newLive = (newTotal / committedScale).coerceAtMost(MAX_LIVE_SCALE)
-                                    if (newLive.isFinite() && newLive > 0f) liveScale = newLive
+                                    val centroid = event.calculateCentroid(useCurrent = true)
+                                    if (!centroid.x.isNaN() && !centroid.y.isNaN()) {
+                                        // 临时倍率也遵守总倍率上下限，避免松手时"回弹"
+                                        val maxZoom = (MAX_SCALE / camera.scale)
+                                            .coerceAtMost(MAX_LIVE_ZOOM)
+                                        val minZoom = (MIN_SCALE / camera.scale)
+                                            .coerceAtLeast(1f / MAX_LIVE_ZOOM)
+                                        if (maxZoom >= minZoom) {
+                                            val target = (liveZoom * zoom).coerceIn(minZoom, maxZoom)
+                                            val factor = target / liveZoom
+                                            if (factor.isFinite() && factor > 0f && factor != 1f) {
+                                                // screen = base * k + t，绕 centroid 缩放即 t' = t*z + c*(1-z)
+                                                livePan = livePan * factor + centroid * (1f - factor)
+                                                liveZoom = target
+                                            }
+                                        }
+                                    }
                                 }
                             }
+
                             val pan = event.calculatePan()
-                            if (pan.x.isFinite() && pan.y.isFinite()) liveOffset += pan
-                            event.changes.forEach { it.consume() }
+                            if (pan.x.isFinite() && pan.y.isFinite()) {
+                                livePan = Offset(
+                                    (livePan.x + pan.x).coerceIn(-MAX_TRANSLATION, MAX_TRANSLATION),
+                                    (livePan.y + pan.y).coerceIn(-MAX_TRANSLATION, MAX_TRANSLATION)
+                                )
+                            }
                         } while (event.changes.any { it.pressed })
-                        gestureActive = false
+
+                        // 纯点击（没有平移/缩放）不提交，避免无谓地重算 Path
+                        if (liveZoom != 1f || livePan != Offset.Zero) {
+                            commitTransform(size.width.toFloat(), size.height.toFloat())
+                        }
                     }
                 }
         )
     }
 }
 
-private fun drawGrid(drawScope: DrawScope, viewport: PlotViewport, axisColor: Color) {
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return
-    val targetPx = 80f
-    val gridMathStep = niceNumber(targetPx / viewport.scale)
-    val gridPxStep = gridMathStep * viewport.scale
-    if (!gridPxStep.isFinite() || gridPxStep < 20f) return
-    val gridColor = axisColor.copy(alpha = 0.15f)
-    val size = drawScope.size
-    var gx = viewport.centerX % gridPxStep
-    if (gx < 0f) gx += gridPxStep
-    var count = 0
-    while (gx < size.width && count < 300) {
-        drawScope.drawLine(gridColor, Offset(gx, 0f), Offset(gx, size.height), 1f)
-        gx += gridPxStep; count++
+// ------------------------------------------------------------------ 绘制辅助
+
+private fun DrawScope.drawGridLayer(viewport: PlotViewport, color: Color) {
+    if (!viewport.isUsable) return
+    val step = niceNumber(76f / viewport.scale)
+    val pixelStep = step * viewport.scale
+    if (!step.isFinite() || step <= 0f || !pixelStep.isFinite() || pixelStep < 6f) return
+
+    val firstCol = floor(viewport.worldX(0f) / step).toInt()
+    val lastCol = ceil(viewport.worldX(size.width) / step).toInt()
+    if (lastCol - firstCol in 0..400) {
+        for (i in firstCol..lastCol) {
+            val x = viewport.screenX(i * step)
+            if (x.isFinite()) {
+                drawLine(color, Offset(x, 0f), Offset(x, size.height), 1f)
+            }
+        }
     }
-    var gy = viewport.centerY % gridPxStep
-    if (gy < 0f) gy += gridPxStep
-    count = 0
-    while (gy < size.height && count < 300) {
-        drawScope.drawLine(gridColor, Offset(0f, gy), Offset(size.width, gy), 1f)
-        gy += gridPxStep; count++
+
+    val firstRow = floor(viewport.worldY(size.height) / step).toInt()
+    val lastRow = ceil(viewport.worldY(0f) / step).toInt()
+    if (lastRow - firstRow in 0..400) {
+        for (i in firstRow..lastRow) {
+            val y = viewport.screenY(i * step)
+            if (y.isFinite()) {
+                drawLine(color, Offset(0f, y), Offset(size.width, y), 1f)
+            }
+        }
     }
 }
 
-private fun drawAxisLabels(
-    drawScope: DrawScope,
+private fun DrawScope.drawAxesLayer(viewport: PlotViewport, color: Color) {
+    if (!viewport.isUsable) return
+    val axisY = viewport.screenY(0.0)
+    val axisX = viewport.screenX(0.0)
+    if (axisY.isFinite() && axisY in 0f..size.height) {
+        drawLine(color, Offset(0f, axisY), Offset(size.width, axisY), 2.5f)
+    }
+    if (axisX.isFinite() && axisX in 0f..size.width) {
+        drawLine(color, Offset(axisX, 0f), Offset(axisX, size.height), 2.5f)
+    }
+}
+
+private fun DrawScope.drawTickLabels(
     viewport: PlotViewport,
-    labelColor: Color,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    style: TextStyle
 ) {
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return
-    val targetPx = 160f
-    val labelMathStep = niceNumber(targetPx / viewport.scale)
-    val labelPxStep = labelMathStep * viewport.scale
-    if (!labelPxStep.isFinite() || labelPxStep < 40f) return
-    val style = TextStyle(fontSize = 10.sp, color = labelColor)
-    val size = drawScope.size
-    var gx = viewport.centerX % labelPxStep
-    if (gx < 0f) gx += labelPxStep
-    var count = 0
-    while (gx < size.width && count < 50) {
-        if (abs(gx - viewport.centerX) > 1f) {
-            val mathX = (gx - viewport.centerX) / viewport.scale
-            if (mathX.isFinite()) {
-                drawScope.drawText(textMeasurer, fmt(mathX), Offset(gx + 2f, viewport.centerY + 4f), style = style)
-            }
+    if (!viewport.isUsable) return
+    val step = niceNumber(150f / viewport.scale)
+    val pixelStep = step * viewport.scale
+    if (!step.isFinite() || step <= 0f || !pixelStep.isFinite() || pixelStep < 24f) return
+
+    val axisY = viewport.screenY(0.0)
+    val axisX = viewport.screenX(0.0)
+    val labelTop = if (axisY.isFinite() && axisY in 0f..size.height) axisY + 4f else size.height - 18f
+    val labelLeft = if (axisX.isFinite() && axisX in 0f..size.width) axisX + 4f else 4f
+
+    val firstCol = floor(viewport.worldX(0f) / step).toInt()
+    val lastCol = ceil(viewport.worldX(size.width) / step).toInt()
+    if (lastCol - firstCol in 0..80) {
+        for (i in firstCol..lastCol) {
+            if (i == 0) continue
+            val value = i * step
+            if (abs(value) < 1e-9f) continue
+            val x = viewport.screenX(value)
+            if (!x.isFinite()) continue
+            // 先量再画：越界的标签直接跳过。
+            // 不能用 drawText(textMeasurer, text, offset) 那个重载——它会用
+            // "画布宽 - offset.x" 推导约束，标签一旦落到右边界外就抛出
+            // IllegalArgumentException: maxWidth(-N) must be >= than minWidth(0)。
+            drawLabel(textMeasurer, fmt(value), x + 3f, labelTop, style)
         }
-        gx += labelPxStep; count++
     }
-    var gy = viewport.centerY % labelPxStep
-    if (gy < 0f) gy += labelPxStep
-    count = 0
-    while (gy < size.height && count < 50) {
-        if (abs(gy - viewport.centerY) > 1f) {
-            val mathY = (viewport.centerY - gy) / viewport.scale
-            if (mathY.isFinite()) {
-                drawScope.drawText(textMeasurer, fmt(mathY), Offset(viewport.centerX + 4f, gy + 2f), style = style)
-            }
+
+    val firstRow = floor(viewport.worldY(size.height) / step).toInt()
+    val lastRow = ceil(viewport.worldY(0f) / step).toInt()
+    if (lastRow - firstRow in 0..80) {
+        for (i in firstRow..lastRow) {
+            if (i == 0) continue
+            val value = i * step
+            val y = viewport.screenY(value)
+            if (!y.isFinite()) continue
+            drawLabel(textMeasurer, fmt(value), labelLeft, y + 2f, style)
         }
-        gy += labelPxStep; count++
     }
 }
 
-private fun buildDrawItems(
-    evaluator: Exp4jEvaluator,
-    functions: List<PlotFunction>,
+/** 测量后检查边界再绘制，保证绘制约束始终合法。 */
+private fun DrawScope.drawLabel(
+    textMeasurer: TextMeasurer,
+    text: String,
+    x: Float,
+    y: Float,
+    style: TextStyle
+) {
+    if (!x.isFinite() || !y.isFinite()) return
+    if (x < 0f || y < 0f || x >= size.width || y >= size.height) return
+    val layout = textMeasurer.measure(text, style)
+    if (x + layout.size.width > size.width) return
+    if (y + layout.size.height > size.height) return
+    drawText(layout, topLeft = Offset(x, y))
+}
+
+private fun DrawScope.drawScaleBar(
     viewport: PlotViewport,
-    sizePx: IntSize,
-    sampleStep: Float
-): List<DrawItem> {
-    if (sizePx.width <= 0 || sizePx.height <= 0) return emptyList()
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return emptyList()
-    if (!viewport.centerX.isFinite() || !viewport.centerY.isFinite()) return emptyList()
+    textMeasurer: TextMeasurer,
+    style: TextStyle,
+    color: Color
+) {
+    if (!viewport.isUsable) return
+    val nice = niceNumber(90f / viewport.scale)
+    val pixelLength = nice * viewport.scale
+    if (!pixelLength.isFinite() || pixelLength <= 0f) return
 
-    val result = mutableListOf<DrawItem>()
-    val width = sizePx.width.toFloat()
-    val height = sizePx.height.toFloat()
-    val gridStep = maxOf(8f, min(width, height) / 80f)
+    val y = size.height - 18f
+    val x2 = size.width - 14f
+    val x1 = (x2 - pixelLength).coerceAtLeast(14f)
+    drawLine(color, Offset(x1, y), Offset(x2, y), 2f)
+    drawLine(color, Offset(x1, y - 5f), Offset(x1, y + 5f), 2f)
+    drawLine(color, Offset(x2, y - 5f), Offset(x2, y + 5f), 2f)
 
-    for (f in functions) {
-        if (!f.visible) continue
-        when (val parsed = parsePlotExpression(f.expression)) {
-            is PlotExpression.Explicit -> {
-                if (evaluator.isValid(parsed.expr)) {
-                    val path = buildCurvePath(evaluator, parsed.expr, width, viewport, sampleStep)
-                    result.add(DrawItem.ExplicitItem(f.id, path, f.colorArgb))
-                }
-            }
-            is PlotExpression.Implicit -> {
-                if (evaluator.isValid2(parsed.expr)) {
-                    val path = buildImplicitPath(evaluator, parsed.expr, viewport, width, height, gridStep)
-                    result.add(DrawItem.ImplicitItem(f.id, path, f.colorArgb))
-                }
-            }
-            is PlotExpression.Invalid -> Unit
-        }
-    }
-    return result
+    val layout = textMeasurer.measure(fmt(nice), style)
+    drawText(
+        layout,
+        topLeft = Offset((x1 + x2) / 2f - layout.size.width / 2f, y - layout.size.height - 6f)
+    )
 }
 
-private fun handleTap(
+// ------------------------------------------------------------------ 命中测试
+
+private fun hitTest(
     evaluator: Exp4jEvaluator,
     functions: List<PlotFunction>,
     viewport: PlotViewport,
     screen: Offset
 ): TapInfo? {
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return null
-    val mathX = (screen.x - viewport.centerX) / viewport.scale
-    val mathY = (viewport.centerY - screen.y) / viewport.scale
-    if (!mathX.isFinite() || !mathY.isFinite()) return null
+    if (!viewport.isUsable) return null
 
     var best: TapInfo? = null
-    var bestDist = 36f
+    var bestDistance = 40f
+    val worldX = viewport.worldX(screen.x)
+    val worldY = viewport.worldY(screen.y)
 
-    for (f in functions) {
-        if (!f.visible) continue
-        when (val parsed = parsePlotExpression(f.expression)) {
+    for (function in functions) {
+        if (!function.visible) continue
+        when (val parsed = parsePlotExpression(function.expression)) {
             is PlotExpression.Explicit -> {
-                if (!evaluator.isValid(parsed.expr)) continue
-                val fy = evaluator.evaluate(parsed.expr, mathX.toDouble())
-                if (fy.isNaN() || fy.isInfinite()) continue
-                val screenY = viewport.centerY - fy.toFloat() * viewport.scale
-                if (!screenY.isFinite()) continue
-                val d = abs(screenY - screen.y)
-                if (d < bestDist) {
-                    bestDist = d
-                    best = TapInfo(screen, mathX, fy.toFloat(), f.colorArgb)
+                val prepared = evaluator.prepareExplicit(parsed.expr) ?: continue
+                // 落在 π 的有理倍数附近时吸附过去，让 "π/2" 这类读数点得到；
+                // 吸附后算出异常的 y（例如 tan 的渐近线）就退回原始位置。
+                val snappedX = snapToPiMultiple(worldX, viewport.scale)
+                var pickedX = snappedX
+                var value = prepared.eval(pickedX)
+                if (!value.isFinite() || abs(value) > 1e6) {
+                    pickedX = worldX
+                    value = prepared.eval(pickedX)
+                }
+                if (!value.isFinite()) continue
+                val y = viewport.screenY(value)
+                if (!y.isFinite()) continue
+                val distance = abs(y - screen.y)
+                if (distance < bestDistance) {
+                    bestDistance = distance
+                    best = TapInfo(
+                        screen = Offset(viewport.screenX(pickedX), y),
+                        worldX = pickedX.toFloat(),
+                        worldY = value.toFloat(),
+                        colorArgb = function.colorArgb
+                    )
                 }
             }
             is PlotExpression.Implicit -> {
-                if (!evaluator.isValid2(parsed.expr)) continue
-                val v = evaluator.evaluate2(parsed.expr, mathX.toDouble(), mathY.toDouble())
-                if (v.isNaN() || v.isInfinite()) continue
-                if (abs(v) < 0.2 && best == null) best = TapInfo(screen, mathX, mathY, f.colorArgb)
+                val prepared = evaluator.prepareImplicit(parsed.expr) ?: continue
+                val value = prepared.eval(worldX, worldY)
+                if (!value.isFinite()) continue
+                if (best == null && abs(value) < 0.1) {
+                    best = TapInfo(screen, worldX.toFloat(), worldY.toFloat(), function.colorArgb)
+                }
             }
             is PlotExpression.Invalid -> Unit
         }
@@ -381,45 +548,35 @@ private fun handleTap(
     return best
 }
 
-private fun DrawScope.drawScaleBar(
-    textMeasurer: TextMeasurer,
-    labelColor: Color,
-    viewport: PlotViewport,
-    size: Size
-) {
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return
-    val nice = niceNumber(80f / viewport.scale)
-    val pxLen = nice * viewport.scale
-    if (!pxLen.isFinite() || pxLen <= 0f) return
-    val padding = 16f
-    val x2 = size.width - padding
-    val x1 = (x2 - pxLen).coerceAtLeast(padding)
-    val y = size.height - padding
-    val barColor = labelColor.copy(alpha = 0.75f)
-    drawLine(barColor, Offset(x1, y), Offset(x2, y), strokeWidth = 3f)
-    drawLine(barColor, Offset(x1, y - 6f), Offset(x1, y + 6f), strokeWidth = 3f)
-    drawLine(barColor, Offset(x2, y - 6f), Offset(x2, y + 6f), strokeWidth = 3f)
-    val layout = textMeasurer.measure(fmt(nice), style = TextStyle(fontSize = 10.sp, color = labelColor))
-    drawText(layout, topLeft = Offset((x1 + x2) / 2f - layout.size.width / 2f, y - layout.size.height - 6f))
-}
+// ------------------------------------------------------------------ 数字格式化
 
-private fun niceNumber(v: Float): Float {
-    if (!v.isFinite() || v <= 0f) return 1f
-    val exp = floor(log10(v.toDouble())).toInt()
-    val base = 10.0.pow(exp).toFloat()
-    val n = v / base
+private fun niceNumber(value: Float): Float {
+    if (!value.isFinite() || value <= 0f) return 1f
+    val exponent = floor(log10(value.toDouble())).toInt()
+    val base = 10.0.pow(exponent).toFloat()
+    if (!base.isFinite() || base <= 0f) return 1f
+    val normalized = value / base
     val nice = when {
-        n < 1.5f -> 1f
-        n < 3.5f -> 2f
-        n < 7.5f -> 5f
+        normalized < 1.5f -> 1f
+        normalized < 3.5f -> 2f
+        normalized < 7.5f -> 5f
         else -> 10f
     }
     return nice * base
 }
 
-private fun fmt(v: Float): String {
-    if (!v.isFinite()) return ""
-    val rounded = round(v * 100f) / 100f
-    return if (rounded == rounded.toLong().toFloat()) rounded.toLong().toString()
-    else rounded.toString()
+private fun fmt(value: Float): String {
+    if (!value.isFinite()) return ""
+    val magnitude = abs(value)
+    // cos(π/2) 这类结果会带 1e-17 量级的浮点噪声，显示成 0 才符合直觉
+    if (magnitude < 5e-4f) return "0"
+    if (magnitude >= 100_000f) {
+        return String.format(Locale.US, "%.2e", value)
+    }
+    val rounded = round(value * 1000f) / 1000f
+    return if (rounded == rounded.toLong().toFloat()) {
+        rounded.toLong().toString()
+    } else {
+        rounded.toString()
+    }
 }

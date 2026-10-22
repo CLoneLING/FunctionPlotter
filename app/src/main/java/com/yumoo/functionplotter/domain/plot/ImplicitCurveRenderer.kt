@@ -2,44 +2,51 @@ package com.yumoo.functionplotter.domain.plot
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
-import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
+import com.yumoo.functionplotter.domain.parser.PreparedFunction
+import kotlin.math.max
+import kotlin.math.min
 
-fun buildImplicitPath(
-    evaluator: Exp4jEvaluator,
-    expression: String,
-    viewport: PlotViewport,
-    width: Float,
-    height: Float,
-    gridStep: Float
-): Path {
+private const val MAX_CELLS = 170
+
+/**
+ * 用 marching squares 画 F(x, y) = 0。
+ *
+ * 相比旧实现的改进：
+ *  - 复用预编译表达式（旧版每个格点都重新 build 解析器，170×170 网格就是
+ *    两万九千次解析，必然卡死主线程）；
+ *  - 网格规模按画布尺寸自适应并封顶，坐标全部落在画布内；
+ *  - NaN / Infinity 单元格直接跳过，不会污染 Path。
+ */
+fun buildImplicitPath(function: PreparedFunction, viewport: PlotViewport): Path {
     val path = Path()
-    if (width <= 0f || height <= 0f) return path
-    if (!viewport.scale.isFinite() || viewport.scale <= 0f) return path
-    if (!viewport.centerX.isFinite() || !viewport.centerY.isFinite()) return path
+    if (!viewport.isUsable) return path
 
-    val step = gridStep.coerceIn(6f, 24f)
-    val cols = ((width / step).toInt() + 2).coerceAtMost(160)
-    val rows = ((height / step).toInt() + 2).coerceAtMost(160)
+    // 同时按短边和长边约束格子数量，长屏手机上也不会算出几万个格点
+    val cellSize = maxOf(
+        min(viewport.width, viewport.height) / MAX_CELLS,
+        max(viewport.width, viewport.height) / 220f
+    ).coerceIn(4f, 14f)
+    val cols = (viewport.width / cellSize).toInt() + 2
+    val rows = (viewport.height / cellSize).toInt() + 2
+    if (cols < 4 || rows < 4 || cols > 400 || rows > 400) return path
 
     val values = Array(rows) { DoubleArray(cols) }
-    for (r in 0 until rows) {
-        val screenY = r * step
-        val mathY = ((viewport.centerY - screenY) / viewport.scale).toDouble()
-        for (c in 0 until cols) {
-            val screenX = c * step
-            val mathX = ((screenX - viewport.centerX) / viewport.scale).toDouble()
-            values[r][c] = evaluator.evaluate2(expression, mathX, mathY)
+    for (row in 0 until rows) {
+        val screenY = row * cellSize
+        val worldY = viewport.worldY(screenY)
+        val line = values[row]
+        for (col in 0 until cols) {
+            line[col] = function.eval(viewport.worldX(col * cellSize), worldY)
         }
     }
 
-    for (r in 0 until rows - 1) {
-        for (c in 0 until cols - 1) {
-            val v00 = values[r][c]
-            val v10 = values[r][c + 1]
-            val v01 = values[r + 1][c]
-            val v11 = values[r + 1][c + 1]
-            if (v00.isNaN() || v10.isNaN() || v01.isNaN() || v11.isNaN()) continue
-            if (v00.isInfinite() || v10.isInfinite() || v01.isInfinite() || v11.isInfinite()) continue
+    for (row in 0 until rows - 1) {
+        for (col in 0 until cols - 1) {
+            val v00 = values[row][col]
+            val v10 = values[row][col + 1]
+            val v01 = values[row + 1][col]
+            val v11 = values[row + 1][col + 1]
+            if (!v00.isFinite() || !v10.isFinite() || !v01.isFinite() || !v11.isFinite()) continue
 
             var mask = 0
             if (v00 > 0) mask = mask or 1
@@ -48,43 +55,57 @@ fun buildImplicitPath(
             if (v01 > 0) mask = mask or 8
             if (mask == 0 || mask == 15) continue
 
-            val x0 = c * step
-            val x1 = (c + 1) * step
-            val y0 = r * step
-            val y1 = (r + 1) * step
+            val x0 = col * cellSize
+            val y0 = row * cellSize
+            val x1 = x0 + cellSize
+            val y1 = y0 + cellSize
 
-            val points = mutableListOf<Offset>()
-            if (((mask and 1) != 0) != ((mask and 2) != 0)) {
-                val t = (v00 / (v00 - v10)).toFloat()
-                if (t.isFinite()) points.add(Offset(x0 + step * t, y0))
-            }
-            if (((mask and 2) != 0) != ((mask and 4) != 0)) {
-                val t = (v10 / (v10 - v11)).toFloat()
-                if (t.isFinite()) points.add(Offset(x1, y0 + step * t))
-            }
-            if (((mask and 8) != 0) != ((mask and 4) != 0)) {
-                val t = (v01 / (v01 - v11)).toFloat()
-                if (t.isFinite()) points.add(Offset(x0 + step * t, y1))
-            }
-            if (((mask and 1) != 0) != ((mask and 8) != 0)) {
-                val t = (v00 / (v00 - v01)).toFloat()
-                if (t.isFinite()) points.add(Offset(x0, y0 + step * t))
-            }
+            val points = ArrayList<Offset>(4)
+            addCrossing(points, v00, v10, x0, y0, cellSize, 0f)
+            addCrossing(points, v10, v11, x1, y0, 0f, cellSize)
+            addCrossing(points, v01, v11, x0, y1, cellSize, 0f)
+            addCrossing(points, v00, v01, x0, y0, 0f, cellSize)
 
-            if (points.size == 2) {
-                path.moveTo(points[0].x, points[0].y)
-                path.lineTo(points[1].x, points[1].y)
-            } else if (points.size == 4) {
-                val center = (v00 + v10 + v01 + v11) / 4
-                if (center > 0) {
-                    path.moveTo(points[0].x, points[0].y); path.lineTo(points[3].x, points[3].y)
-                    path.moveTo(points[1].x, points[1].y); path.lineTo(points[2].x, points[2].y)
-                } else {
-                    path.moveTo(points[0].x, points[0].y); path.lineTo(points[1].x, points[1].y)
-                    path.moveTo(points[2].x, points[2].y); path.lineTo(points[3].x, points[3].y)
+            when (points.size) {
+                2 -> {
+                    path.moveTo(points[0].x, points[0].y)
+                    path.lineTo(points[1].x, points[1].y)
+                }
+                4 -> {
+                    // 鞍点：用格心符号决定两条线段如何配对
+                    val center = (v00 + v10 + v01 + v11) / 4
+                    if (center > 0) {
+                        path.moveTo(points[0].x, points[0].y)
+                        path.lineTo(points[3].x, points[3].y)
+                        path.moveTo(points[1].x, points[1].y)
+                        path.lineTo(points[2].x, points[2].y)
+                    } else {
+                        path.moveTo(points[0].x, points[0].y)
+                        path.lineTo(points[1].x, points[1].y)
+                        path.moveTo(points[2].x, points[2].y)
+                        path.lineTo(points[3].x, points[3].y)
+                    }
                 }
             }
         }
     }
     return path
+}
+
+/** 线性插值求等值线与一条格边的交点；符号相同或退化时返回。 */
+private fun addCrossing(
+    out: MutableList<Offset>,
+    valueA: Double,
+    valueB: Double,
+    startX: Float,
+    startY: Float,
+    deltaX: Float,
+    deltaY: Float
+) {
+    if ((valueA > 0) == (valueB > 0)) return
+    val denominator = valueA - valueB
+    if (denominator == 0.0) return
+    val t = (valueA / denominator).toFloat()
+    if (!t.isFinite()) return
+    out.add(Offset(startX + deltaX * t, startY + deltaY * t))
 }
