@@ -213,5 +213,5 @@ app/src/main/java/com/yumoo/functionplotter/
 
 ## 致谢
 
-- exp4j：数学表达式解析
+- exp4j：数学表达式解析 `Apache-2.0`
 - Jetpack Compose / Material 3
