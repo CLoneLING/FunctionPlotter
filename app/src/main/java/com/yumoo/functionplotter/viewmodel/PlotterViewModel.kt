@@ -35,6 +35,9 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     val showGrid = repository.showGrid
     val showAxisLabels = repository.showAxisLabels
     val sampleStep = repository.sampleStep
+    val showHelpButton = repository.showHelpButton
+    val showKeyHints = repository.showKeyHints
+    val showKeyTabs = repository.showKeyTabs
 
     init {
         restoreAndObserve()

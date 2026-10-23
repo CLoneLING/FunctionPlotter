@@ -24,10 +24,13 @@ fun UpdateDialog(
         text = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 320.dp)
+                    .heightIn(max = 360.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(info.notes.ifBlank { "本次更新暂无说明。" })
+                MarkdownText(
+                    markdown = info.notes.ifBlank { "本次更新暂无说明。" },
+                    baseStyle = androidx.compose.material3.MaterialTheme.typography.bodySmall
+                )
             }
         },
         confirmButton = {

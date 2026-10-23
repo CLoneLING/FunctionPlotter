@@ -189,7 +189,9 @@ fun MathKeyboard(
     onKey: (String) -> Unit,
     onBackspace: () -> Unit,
     onClear: () -> Unit,
-    onReplace: (String) -> Unit
+    onReplace: (String) -> Unit,
+    showHints: Boolean = true,
+    showTabs: Boolean = true
 ) {
     val pagerState = rememberPagerState { PAGES.size }
     val scope = rememberCoroutineScope()
@@ -198,26 +200,27 @@ fun MathKeyboard(
     val maxRows = remember { PAGES.maxOf { it.rows.size } }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-        // 页签
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            PAGES.forEachIndexed { index, page ->
-                val selected = pagerState.currentPage == index
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            if (selected) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surface
-                        )
-                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
-                        .padding(vertical = 5.dp),
-                    contentAlignment = Alignment.Center
+        // 页签（可在设置中隐藏，隐藏后左右滑动或点页码仍可切换）
+        if (showTabs) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                PAGES.forEachIndexed { index, page ->
+                    val selected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
+                            )
+                            .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
+                            .padding(vertical = 5.dp),
+                        contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = page.title,
@@ -229,6 +232,7 @@ fun MathKeyboard(
                     )
                 }
             }
+        }
         }
 
         HorizontalPager(
@@ -245,6 +249,7 @@ fun MathKeyboard(
                         row.forEach { calcKey ->
                             KeyButton(
                                 calcKey = calcKey,
+                                showHints = showHints,
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     when (calcKey.action) {
@@ -298,7 +303,12 @@ fun MathKeyboard(
 }
 
 @Composable
-private fun KeyButton(calcKey: CalcKey, modifier: Modifier, onClick: () -> Unit) {
+private fun KeyButton(
+    calcKey: CalcKey,
+    modifier: Modifier,
+    showHints: Boolean,
+    onClick: () -> Unit
+) {
     val containerColor = when {
         calcKey.danger -> MaterialTheme.colorScheme.errorContainer
         calcKey.accent -> MaterialTheme.colorScheme.primaryContainer
@@ -329,7 +339,7 @@ private fun KeyButton(calcKey: CalcKey, modifier: Modifier, onClick: () -> Unit)
                 maxLines = 1,
                 overflow = TextOverflow.Clip
             )
-            if (calcKey.hint != null) {
+            if (showHints && calcKey.hint != null) {
                 Text(
                     text = calcKey.hint,
                     fontSize = 7.sp,

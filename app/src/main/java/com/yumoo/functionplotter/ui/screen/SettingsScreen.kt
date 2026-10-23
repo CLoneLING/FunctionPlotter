@@ -31,13 +31,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.yumoo.functionplotter.BuildConfig
 import com.yumoo.functionplotter.data.update.UpdateResult
+import com.yumoo.functionplotter.ui.component.MarkdownText
 import com.yumoo.functionplotter.ui.component.UpdateBanner
 import com.yumoo.functionplotter.viewmodel.SettingsViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 import kotlinx.coroutines.launch
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +54,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val checking by updateViewModel.checking.collectAsState()
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -87,6 +94,17 @@ fun SettingsScreen(
                 SwitchRow("显示刻度标签", state.showAxisLabels, viewModel::setShowAxisLabels)
             }
 
+            SectionCard("界面模块") {
+                Text(
+                    text = "隐藏后相邻模块会自动补齐空间。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                SwitchRow("显示写法帮助按钮（?）", state.showHelpButton, viewModel::setShowHelpButton)
+                SwitchRow("显示按键说明文字", state.showKeyHints, viewModel::setShowKeyHints)
+                SwitchRow("显示键盘分页栏", state.showKeyTabs, viewModel::setShowKeyTabs)
+            }
+
             SectionCard("绘图") {
                 Text("采样精度（数值越小越精细）")
                 Slider(
@@ -120,9 +138,14 @@ fun SettingsScreen(
             }
 
             SectionCard("关于") {
-                Text("FunctionPlotter", style = MaterialTheme.typography.titleMedium)
-                Text("项目主页：Github - CLoneLING/FunctionPlotter")
-                Text("开源许可：MIT License")
+                MarkdownText(markdown = ABOUT_MARKDOWN)
+                Button(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(feedbackUrl()))) },
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("提交反馈 / 建议")
+                }
             }
         }
     }
@@ -155,4 +178,47 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
         Text(label)
         Switch(checked = checked, onCheckedChange = onChange)
     }
+}
+
+/** 关于页正文：用 Markdown 渲染，方便后续直接在字符串里加内容。 */
+private val ABOUT_MARKDOWN = """
+    **FunctionPlotter** · 简洁的函数图像绘制工具
+
+    - 显函数、隐函数方程，以及单变量方程求根
+    - 符号翻译：`√ ∛ |x| x² 2x`、`log(底数, 真数)`
+    - 点按读数支持 π 形式
+
+    ### 用户协议
+    本应用按「现状」提供，用于学习与日常绘图，不对计算结果的准确性作保证。
+
+    ### 隐私说明
+    不收集、不上传任何个人数据；表达式与设置只保存在本机，仅在检查更新时访问 GitHub 公开接口。
+
+    ### 开源许可
+    MIT License · 表达式求值使用 exp4j
+""".trimIndent()
+
+/** 预填版本与机型，减少反馈时的来回沟通。 */
+private fun feedbackUrl(): String {
+    val body = """
+        **问题 / 建议描述**
+
+
+
+        ---
+        - 版本：${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
+        - 机型：${Build.MODEL}（Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}）
+    """.trimIndent()
+
+    return Uri.Builder()
+        .scheme("https")
+        .authority("github.com")
+        .appendPath("CLoneLING")
+        .appendPath("FunctionPlotter")
+        .appendPath("issues")
+        .appendPath("new")
+        .appendQueryParameter("title", "[反馈] ")
+        .appendQueryParameter("body", body)
+        .build()
+        .toString()
 }

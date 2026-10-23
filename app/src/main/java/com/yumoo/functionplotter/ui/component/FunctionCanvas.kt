@@ -1,6 +1,7 @@
 package com.yumoo.functionplotter.ui.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -9,10 +10,16 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +57,8 @@ import com.yumoo.functionplotter.domain.plot.PlotViewport
 import com.yumoo.functionplotter.domain.plot.asPiFraction
 import com.yumoo.functionplotter.domain.plot.buildPlotFrame
 import com.yumoo.functionplotter.domain.plot.snapToPiMultiple
+import com.yumoo.functionplotter.domain.solver.EquationInfo
+import com.yumoo.functionplotter.domain.solver.formatRoot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -113,6 +122,7 @@ fun FunctionCanvas(
     var liveZoom by remember { mutableFloatStateOf(1f) }
     var livePan by remember { mutableStateOf(Offset.Zero) }
     var tapInfo by remember { mutableStateOf<TapInfo?>(null) }
+    var showEquationDialog by remember { mutableStateOf(false) }
 
     val width = canvasSize.width.toFloat()
     val height = canvasSize.height.toFloat()
@@ -296,6 +306,7 @@ fun FunctionCanvas(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
+                    // 只保留单击读数：双击复位容易在连点时误触发，已移除
                     detectTapGestures(
                         onTap = { position ->
                             tapInfo = hitTest(
@@ -304,12 +315,6 @@ fun FunctionCanvas(
                                 viewport = viewportState.value,
                                 screen = position
                             )
-                        },
-                        onDoubleTap = {
-                            camera = Camera.Default
-                            liveZoom = 1f
-                            livePan = Offset.Zero
-                            tapInfo = null
                         }
                     )
                 }
@@ -359,7 +364,108 @@ fun FunctionCanvas(
                     }
                 }
         )
+        // 方程解信息：左下角淡灰小字，信息量大时点 "›" 查看全部
+        frame.equation?.let { equation ->
+            EquationOverlay(
+                info = equation,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp),
+                onShowAll = { showEquationDialog = true }
+            )
+        }
     }
+
+    if (showEquationDialog) {
+        frame.equation?.let { equation ->
+            EquationDialog(info = equation, onDismiss = { showEquationDialog = false })
+        }
+    }
+}
+
+// ------------------------------------------------------------------ 方程解信息
+
+@Composable
+private fun EquationOverlay(
+    info: EquationInfo,
+    modifier: Modifier,
+    onShowAll: () -> Unit
+) {
+    val baseColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
+    val style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = baseColor)
+    val summary = remember(info) { equationSummary(info) }
+
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(text = summary.text, style = style)
+        if (summary.expandable) {
+            Text(
+                text = " ‹›",
+                style = style.copy(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)),
+                modifier = Modifier
+                    .clickable(onClick = onShowAll)
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EquationDialog(info: EquationInfo, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("方程的解") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (info.isEmpty) {
+                    Text("当前可视范围内没有实根。")
+                } else {
+                    info.roots.forEachIndexed { index, value ->
+                        Text("x${subscript(index + 1)} = ${formatRoot(value)}")
+                    }
+                    if (info.truncated) {
+                        Text(
+                            text = "根较多，仅显示前 ${info.roots.size} 个。放大后再看可减少数量。",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        }
+    )
+}
+
+private data class EquationSummary(val text: String, val expandable: Boolean)
+
+private fun equationSummary(info: EquationInfo): EquationSummary {
+    if (info.isEmpty) return EquationSummary("无实根", false)
+    val shown = info.roots.take(3)
+    val body = shown.mapIndexed { index, value ->
+        "x${subscript(index + 1)}=${formatRoot(value)}"
+    }.joinToString("  ")
+    val hasMore = info.roots.size > shown.size || info.truncated
+    return if (hasMore) EquationSummary("$body  …", true) else EquationSummary(body, false)
+}
+
+private fun subscript(index: Int): String = when (index) {
+    1 -> "₁"
+    2 -> "₂"
+    3 -> "₃"
+    4 -> "₄"
+    5 -> "₅"
+    6 -> "₆"
+    7 -> "₇"
+    8 -> "₈"
+    9 -> "₉"
+    else -> "${index}"
 }
 
 // ------------------------------------------------------------------ 绘制辅助

@@ -22,6 +22,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val autoCheckUpdate = dataStore.data.map { it[KEY_AUTO_CHECK_UPDATE] ?: true }
     val sampleStep = dataStore.data.map { it[KEY_SAMPLE_STEP] ?: 2f }
 
+    /** 界面模块开关：默认全部显示，可在设置里隐藏。 */
+    val showHelpButton = dataStore.data.map { it[KEY_SHOW_HELP] ?: true }
+    val showKeyHints = dataStore.data.map { it[KEY_SHOW_KEY_HINTS] ?: true }
+    val showKeyTabs = dataStore.data.map { it[KEY_SHOW_KEY_TABS] ?: true }
+
     val functionsJson = dataStore.data.map { it[KEY_FUNCTIONS_JSON] ?: "" }
     val selectedFunctionId = dataStore.data.map { it[KEY_SELECTED_ID] ?: -1L }
     val draftExpression = dataStore.data.map { it[KEY_DRAFT] ?: "" }
@@ -38,6 +43,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setAutoCheckUpdate(v: Boolean) = dataStore.edit { it[KEY_AUTO_CHECK_UPDATE] = v }
     suspend fun setSampleStep(v: Float) = dataStore.edit { it[KEY_SAMPLE_STEP] = v }
 
+    suspend fun setShowHelpButton(v: Boolean) = dataStore.edit { it[KEY_SHOW_HELP] = v }
+    suspend fun setShowKeyHints(v: Boolean) = dataStore.edit { it[KEY_SHOW_KEY_HINTS] = v }
+    suspend fun setShowKeyTabs(v: Boolean) = dataStore.edit { it[KEY_SHOW_KEY_TABS] = v }
+
     suspend fun setFunctionsJson(v: String) = dataStore.edit { it[KEY_FUNCTIONS_JSON] = v }
     suspend fun setSelectedFunctionId(v: Long) = dataStore.edit { it[KEY_SELECTED_ID] = v }
     suspend fun setDraftExpression(v: String) = dataStore.edit { it[KEY_DRAFT] = v }
@@ -51,6 +60,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_SHOW_AXIS_LABELS = booleanPreferencesKey("show_axis_labels")
         private val KEY_AUTO_CHECK_UPDATE = booleanPreferencesKey("auto_check_update")
         private val KEY_SAMPLE_STEP = floatPreferencesKey("sample_step")
+        private val KEY_SHOW_HELP = booleanPreferencesKey("show_help_button")
+        private val KEY_SHOW_KEY_HINTS = booleanPreferencesKey("show_key_hints")
+        private val KEY_SHOW_KEY_TABS = booleanPreferencesKey("show_key_tabs")
         private val KEY_FUNCTIONS_JSON = stringPreferencesKey("functions_json")
         private val KEY_SELECTED_ID = longPreferencesKey("selected_function_id")
         private val KEY_DRAFT = stringPreferencesKey("draft_expression")

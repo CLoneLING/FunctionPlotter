@@ -1,5 +1,10 @@
 package com.yumoo.functionplotter.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,7 +14,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.yumoo.functionplotter.ui.component.UpdateHost
-import com.yumoo.functionplotter.ui.screen.InfoScreen
 import com.yumoo.functionplotter.ui.screen.PlotterScreen
 import com.yumoo.functionplotter.ui.screen.SettingsScreen
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
@@ -19,7 +23,6 @@ import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 object Routes {
     const val PLOTTER = "plotter"
     const val SETTINGS = "settings"
-    const val INFO = "info"
 }
 
 @Composable
@@ -29,14 +32,28 @@ fun AppNav() {
     val updateViewModel: UpdateViewModel = viewModel()
 
     Box(Modifier.fillMaxSize()) {
-        NavHost(navController = nav, startDestination = Routes.PLOTTER) {
+        NavHost(
+            navController = nav,
+            startDestination = Routes.PLOTTER,
+            enterTransition = {
+                fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)
+            },
+            exitTransition = {
+                fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+            },
+            popEnterTransition = {
+                fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 1.02f)
+            },
+            popExitTransition = {
+                fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+            }
+        ) {
             composable(Routes.PLOTTER) {
                 val vm: PlotterViewModel = viewModel()
                 PlotterScreen(
                     viewModel = vm,
                     updateViewModel = updateViewModel,
-                    onNavigateToSettings = { nav.navigate(Routes.SETTINGS) },
-                    onNavigateToInfo = { nav.navigate(Routes.INFO) }
+                    onNavigateToSettings = { nav.navigate(Routes.SETTINGS) }
                 )
             }
             composable(Routes.SETTINGS) {
@@ -46,9 +63,6 @@ fun AppNav() {
                     updateViewModel = updateViewModel,
                     onBack = { nav.popBackStack() }
                 )
-            }
-            composable(Routes.INFO) {
-                InfoScreen(onBack = { nav.popBackStack() })
             }
         }
 

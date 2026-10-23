@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -40,6 +42,7 @@ import com.yumoo.functionplotter.ui.component.ExpressionInput
 import com.yumoo.functionplotter.ui.component.FunctionCanvas
 import com.yumoo.functionplotter.ui.component.FunctionChips
 import com.yumoo.functionplotter.ui.component.MathKeyboard
+import com.yumoo.functionplotter.ui.component.SyntaxHelpDialog
 import com.yumoo.functionplotter.ui.component.UpdateBanner
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
@@ -48,8 +51,7 @@ import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 fun PlotterScreen(
     viewModel: PlotterViewModel,
     updateViewModel: UpdateViewModel,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToInfo: () -> Unit
+    onNavigateToSettings: () -> Unit
 ) {
     val functions by viewModel.functions.collectAsState()
     val selectedId by viewModel.selectedId.collectAsState()
@@ -57,6 +59,9 @@ fun PlotterScreen(
     val showGrid by viewModel.showGrid.collectAsState(initial = true)
     val showAxisLabels by viewModel.showAxisLabels.collectAsState(initial = true)
     val sampleStep by viewModel.sampleStep.collectAsState(initial = 2f)
+    val showHelpButton by viewModel.showHelpButton.collectAsState(initial = true)
+    val showKeyHints by viewModel.showKeyHints.collectAsState(initial = true)
+    val showKeyTabs by viewModel.showKeyTabs.collectAsState(initial = true)
 
     val evaluator = remember { Exp4jEvaluator() }
     val draftError = remember(draft) {
@@ -68,6 +73,7 @@ fun PlotterScreen(
     }
 
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var showHelp by remember { mutableStateOf(false) }
 
     // 启动时自动检查更新（受设置里的开关控制，24 小时内不重复）
     LaunchedEffect(Unit) { updateViewModel.autoCheckOnce() }
@@ -106,15 +112,18 @@ fun PlotterScreen(
                 canAdd = functions.size < PlotterViewModel.MAX_FUNCTIONS,
                 modifier = Modifier.weight(1f)
             )
+            // 信息页已并入设置，这里改为写法帮助入口
+            if (showHelpButton) {
+                CircleTextButton(
+                    text = "?",
+                    contentDescription = "写法说明",
+                    onClick = { showHelp = true }
+                )
+            }
             CircleIconButton(
                 icon = Icons.Default.Settings,
                 contentDescription = "设置",
                 onClick = onNavigateToSettings
-            )
-            CircleIconButton(
-                icon = Icons.Default.Info,
-                contentDescription = "信息",
-                onClick = onNavigateToInfo
             )
         }
 
@@ -146,8 +155,14 @@ fun PlotterScreen(
             onKey = viewModel::appendToDraft,
             onBackspace = viewModel::backspace,
             onClear = viewModel::clearDraft,
-            onReplace = viewModel::replaceDraft
+            onReplace = viewModel::replaceDraft,
+            showHints = showKeyHints,
+            showTabs = showKeyTabs
         )
+    }
+
+    if (showHelp) {
+        SyntaxHelpDialog(onDismiss = { showHelp = false })
     }
 }
 
@@ -170,6 +185,30 @@ private fun CircleIconButton(
             contentDescription = contentDescription,
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun CircleTextButton(
+    text: String,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 17.sp,
+            modifier = Modifier.padding(bottom = 1.dp)
         )
     }
 }
