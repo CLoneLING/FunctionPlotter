@@ -245,7 +245,7 @@ fun MathKeyboard(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(46.dp * maxRows + 4.dp),
+                .height(50.dp * maxRows + 4.dp),
             verticalAlignment = Alignment.Top
         ) { pageIndex ->
             val page = PAGES[pageIndex]
