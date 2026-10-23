@@ -1,7 +1,11 @@
 package com.yumoo.functionplotter.ui.component
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,10 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yumoo.functionplotter.ui.theme.AtomicShapes
 import kotlinx.coroutines.launch
 
 private enum class KeyAction { Insert, Backspace, Clear, Replace, LogBase }
@@ -312,19 +318,34 @@ private fun KeyButton(
     val containerColor = when {
         calcKey.danger -> MaterialTheme.colorScheme.errorContainer
         calcKey.accent -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
     }
     val contentColor = when {
         calcKey.danger -> MaterialTheme.colorScheme.onErrorContainer
         calcKey.accent -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
     }
+
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.955f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "keyScale"
+    )
 
     FilledTonalButton(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = AtomicShapes.Key,
         contentPadding = PaddingValues(0.dp),
-        modifier = modifier.padding(2.dp).height(44.dp),
+        interactionSource = interaction,
+        modifier = modifier
+            .padding(3.dp)
+            .height(44.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = containerColor,
             contentColor = contentColor

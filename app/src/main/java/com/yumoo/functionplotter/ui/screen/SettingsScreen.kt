@@ -1,6 +1,7 @@
 package com.yumoo.functionplotter.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,8 @@ import com.yumoo.functionplotter.BuildConfig
 import com.yumoo.functionplotter.data.update.UpdateResult
 import com.yumoo.functionplotter.ui.component.MarkdownText
 import com.yumoo.functionplotter.ui.component.UpdateBanner
+import com.yumoo.functionplotter.ui.theme.AtomicShapes
+import com.yumoo.functionplotter.ui.theme.atomicSurface
 import com.yumoo.functionplotter.viewmodel.SettingsViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 import kotlinx.coroutines.launch
@@ -153,16 +156,20 @@ fun SettingsScreen(
 
 @Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .atomicSurface(AtomicShapes.Card)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
             content()
         }
     }

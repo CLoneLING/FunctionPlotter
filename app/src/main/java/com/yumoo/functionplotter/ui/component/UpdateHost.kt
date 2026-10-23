@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.yumoo.functionplotter.ui.theme.AtomicShapes
+import com.yumoo.functionplotter.ui.theme.atomicSurface
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 
 /**
@@ -85,12 +88,11 @@ fun UpdateBanner(viewModel: UpdateViewModel, modifier: Modifier = Modifier) {
     val progress by viewModel.progress.collectAsState()
     val current = progress ?: return
 
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        tonalElevation = 2.dp,
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 4.dp)
+            .atomicSurface(AtomicShapes.Control)
     ) {
         Row(
             modifier = Modifier

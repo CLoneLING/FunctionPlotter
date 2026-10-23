@@ -15,6 +15,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yumoo.functionplotter.ui.theme.AtomicShapes
 
 /**
  * 表达式输入行：输入框 + 粘贴 + 应用。
@@ -55,8 +57,14 @@ fun ExpressionInput(
                 singleLine = true,
                 readOnly = true,
                 isError = error != null,
-                shape = RoundedCornerShape(20.dp),
+                shape = AtomicShapes.Control,
                 textStyle = MaterialTheme.typography.titleMedium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                ),
                 modifier = Modifier.weight(1f)
             )
 
