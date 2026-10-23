@@ -60,10 +60,12 @@ fun ExpressionInput(
                 shape = AtomicShapes.Control,
                 textStyle = MaterialTheme.typography.titleMedium,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    errorContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                    errorBorderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.75f)
                 ),
                 modifier = Modifier.weight(1f)
             )

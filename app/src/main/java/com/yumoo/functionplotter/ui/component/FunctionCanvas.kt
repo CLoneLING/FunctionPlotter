@@ -293,11 +293,7 @@ fun FunctionCanvas(
                     style = MaterialTheme.typography.titleSmall,
                     color = hintColor
                 )
-                Text(
-                    text = "拖动平移 · 双指缩放 · 双击复位 · 点按读数",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = hintColor
-                )
+
             }
         }
 

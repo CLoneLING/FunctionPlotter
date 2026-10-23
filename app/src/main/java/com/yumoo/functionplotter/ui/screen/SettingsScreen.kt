@@ -57,6 +57,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val checking by updateViewModel.checking.collectAsState()
+    val downloadProgress by updateViewModel.progress.collectAsState()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -132,11 +133,17 @@ fun SettingsScreen(
                             }
                         }
                     },
-                    enabled = !checking,
+                    enabled = !checking && downloadProgress == null,
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (checking) "正在检查…" else "立即检查更新")
+                    Text(
+                        when {
+                            checking -> "正在检查…"
+                            downloadProgress != null -> "正在下载更新…"
+                            else -> "立即检查更新"
+                        }
+                    )
                 }
             }
 

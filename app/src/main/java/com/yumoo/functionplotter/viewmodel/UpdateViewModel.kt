@@ -67,7 +67,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
             if (!repository.autoCheckUpdate.first()) return@launch
             val lastCheck = repository.lastUpdateCheck.first()
             val now = System.currentTimeMillis()
-            if (lastCheck > 0 && now - lastCheck < CHECK_INTERVAL_MS) return@launch
+            // 每次冷启动检查一次，不再做 24 小时节流
 
             _checking.value = true
             val result = manager.checkForUpdate(BuildConfig.VERSION_NAME)
@@ -109,6 +109,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
      * 没权限就不下载，只把用户送去授权页；返回后由 onResume 续上。
      */
     fun requestDownload(url: String) {
+        if (_progress.value != null) return
         if (manager.canInstallPackages()) {
             startDownload(url)
         } else {
@@ -139,6 +140,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun startDownload(url: String) {
+        _available.value = null
         _progress.value = 0
         notifications.ensureChannel()
         val id = manager.downloadApk(url)

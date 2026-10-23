@@ -107,7 +107,8 @@ fun UpdateBanner(viewModel: UpdateViewModel, modifier: Modifier = Modifier) {
                         current >= 100 -> "更新已下载完成，可以安装"
                         else -> "正在下载更新 $current%"
                     },
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (current in 0..99) {
                     LinearProgressIndicator(

@@ -99,6 +99,8 @@ fun FunctionChips(
                     Text(
                         function.expression.ifBlank { "(空)" },
                         fontSize = 12.sp,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = 120.dp)

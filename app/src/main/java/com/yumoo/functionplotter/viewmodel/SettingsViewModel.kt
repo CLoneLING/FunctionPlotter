@@ -17,8 +17,8 @@ data class SettingsUiState(
     val autoCheckUpdate: Boolean = true,
     val sampleStep: Float = 2f,
     val showHelpButton: Boolean = true,
-    val showKeyHints: Boolean = true,
-    val showKeyTabs: Boolean = true
+    val showKeyHints: Boolean = false,
+    val showKeyTabs: Boolean = false
 )
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {

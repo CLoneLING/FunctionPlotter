@@ -24,8 +24,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     /** 界面模块开关：默认全部显示，可在设置里隐藏。 */
     val showHelpButton = dataStore.data.map { it[KEY_SHOW_HELP] ?: true }
-    val showKeyHints = dataStore.data.map { it[KEY_SHOW_KEY_HINTS] ?: true }
-    val showKeyTabs = dataStore.data.map { it[KEY_SHOW_KEY_TABS] ?: true }
+    val showKeyHints = dataStore.data.map { it[KEY_SHOW_KEY_HINTS] ?: false }
+    val showKeyTabs = dataStore.data.map { it[KEY_SHOW_KEY_TABS] ?: false }
 
     val functionsJson = dataStore.data.map { it[KEY_FUNCTIONS_JSON] ?: "" }
     val selectedFunctionId = dataStore.data.map { it[KEY_SELECTED_ID] ?: -1L }
