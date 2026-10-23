@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
 
-当前版本：**0.1.25**（versionCode 20261022）
+当前版本：**0.2.4**（versionCode 20261024）
 
 ---
 
