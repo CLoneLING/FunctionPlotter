@@ -113,7 +113,9 @@ fun FunctionChips(
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "删除",
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }

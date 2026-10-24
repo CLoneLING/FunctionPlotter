@@ -6,12 +6,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.yumoo.functionplotter.ui.navigation.AppNav
 import com.yumoo.functionplotter.ui.theme.FunctionPlotterTheme
+import com.yumoo.functionplotter.ui.theme.LocalAnimationsEnabled
 import com.yumoo.functionplotter.ui.util.LARGE_SCREEN_WIDTH_DP
+import java.time.LocalTime
 
 class MainActivity : ComponentActivity() {
 
@@ -29,8 +37,20 @@ class MainActivity : ComponentActivity() {
                 2 -> true
                 else -> isSystemInDarkTheme()
             }
-            FunctionPlotterTheme(darkTheme = darkTheme) {
-                AppNav()
+            val animations by repository.animations.collectAsState(initial = true)
+            val eyeCareMode by repository.eyeCareMode.collectAsState(initial = 1)
+            val warm = !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now())
+
+            CompositionLocalProvider(LocalAnimationsEnabled provides animations) {
+                FunctionPlotterTheme(darkTheme = darkTheme) {
+                    Box(Modifier.fillMaxSize()) {
+                        AppNav()
+                        if (warm) {
+                            // 护眼：低透明度暖色覆盖，不拦截触摸
+                            Box(Modifier.fillMaxSize().background(EyeCareTint))
+                        }
+                    }
+                }
             }
         }
     }
@@ -41,10 +61,6 @@ class MainActivity : ComponentActivity() {
         applyOrientationPolicy(newConfig)
     }
 
-    /**
-     * 手机锁竖屏（小屏横屏太局促）；大屏允许自由旋转。
-     * 折叠屏合盖后 sw 变小会自动落回竖屏，展开后恢复可旋转。
-     */
     private fun applyOrientationPolicy(configuration: Configuration) {
         val isLarge = configuration.smallestScreenWidthDp >= LARGE_SCREEN_WIDTH_DP
         requestedOrientation = if (isLarge) {
@@ -53,4 +69,14 @@ class MainActivity : ComponentActivity() {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
+}
+
+/** 护眼模式的暖色覆盖层。 */
+private val EyeCareTint = Color(0x16FF8A2B)
+
+/** 0 关闭 / 1 定时 20:00–次日 7:00 / 2 常开。 */
+private fun eyeCareActive(mode: Int, now: LocalTime): Boolean = when (mode) {
+    2 -> true
+    1 -> now.hour >= 20 || now.hour < 7
+    else -> false
 }

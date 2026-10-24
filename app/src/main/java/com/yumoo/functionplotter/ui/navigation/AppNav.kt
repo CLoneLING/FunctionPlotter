@@ -1,5 +1,8 @@
 package com.yumoo.functionplotter.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import com.yumoo.functionplotter.ui.theme.LocalAnimationsEnabled
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,22 +33,27 @@ fun AppNav() {
     val nav = rememberNavController()
     // 作用域挂在 Activity 上：自动检查/手动检查/下载共用同一份状态
     val updateViewModel: UpdateViewModel = viewModel()
+    val animations = LocalAnimationsEnabled.current
 
     Box(Modifier.fillMaxSize()) {
         NavHost(
             navController = nav,
             startDestination = Routes.PLOTTER,
             enterTransition = {
-                fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)
+                if (animations) fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)
+                else EnterTransition.None
             },
             exitTransition = {
-                fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+                if (animations) fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+                else ExitTransition.None
             },
             popEnterTransition = {
-                fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 1.02f)
+                if (animations) fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 1.02f)
+                else EnterTransition.None
             },
             popExitTransition = {
-                fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+                if (animations) fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.98f)
+                else ExitTransition.None
             }
         ) {
             composable(Routes.PLOTTER) {

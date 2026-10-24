@@ -156,7 +156,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
         /** 首次启动时的默认函数。 */
         private const val DEFAULT_EXPRESSION = "x^2"
 
-        const val MAX_FUNCTIONS = 5
+        const val MAX_FUNCTIONS = 10
         val PALETTE = longArrayOf(
             0xFF3A7BD5,
             0xFFE05A5A,

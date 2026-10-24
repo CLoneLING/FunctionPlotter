@@ -35,8 +35,9 @@ fun buildCurvePath(
     val height = viewport.height
 
     // 路径坐标只允许落在 [-height/2, 1.5*height]，超出部分贴边
-    val minY = -height * 0.5f
-    val maxY = height * 1.5f
+    val overshoot = height * 24f
+    val minY = -overshoot
+    val maxY = height + overshoot
     val jumpLimit = height * 2f
 
     val columns = (width / step).toInt() + 1

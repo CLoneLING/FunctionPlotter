@@ -18,7 +18,9 @@ data class SettingsUiState(
     val sampleStep: Float = 2f,
     val showHelpButton: Boolean = true,
     val showKeyHints: Boolean = false,
-    val showKeyTabs: Boolean = false
+    val showKeyTabs: Boolean = false,
+    val animations: Boolean = true,
+    val eyeCareMode: Int = 1
 )
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
@@ -41,6 +43,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         SettingsUiState(theme, grid, labels, auto, step)
     }.combine(moduleFlags) { state, (help, hints, tabs) ->
         state.copy(showHelpButton = help, showKeyHints = hints, showKeyTabs = tabs)
+    }.combine(repository.animations) { state, anim ->
+        state.copy(animations = anim)
+    }.combine(repository.eyeCareMode) { state, eye ->
+        state.copy(eyeCareMode = eye)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -56,4 +62,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     fun setShowHelpButton(value: Boolean) = viewModelScope.launch { repository.setShowHelpButton(value) }
     fun setShowKeyHints(value: Boolean) = viewModelScope.launch { repository.setShowKeyHints(value) }
     fun setShowKeyTabs(value: Boolean) = viewModelScope.launch { repository.setShowKeyTabs(value) }
+
+    fun setAnimations(value: Boolean) = viewModelScope.launch { repository.setAnimations(value) }
+    fun setEyeCareMode(value: Int) = viewModelScope.launch { repository.setEyeCareMode(value) }
 }

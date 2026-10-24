@@ -27,6 +27,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val showKeyHints = dataStore.data.map { it[KEY_SHOW_KEY_HINTS] ?: false }
     val showKeyTabs = dataStore.data.map { it[KEY_SHOW_KEY_TABS] ?: false }
 
+    /** 界面动效开关（默认开启）。 */
+    val animations = dataStore.data.map { it[KEY_ANIMATIONS] ?: true }
+
+    /** 护眼模式：0 关闭 / 1 定时（20:00–次日 7:00）/ 2 常开，默认定时。 */
+    val eyeCareMode = dataStore.data.map { it[KEY_EYE_CARE] ?: 1 }
+
     val functionsJson = dataStore.data.map { it[KEY_FUNCTIONS_JSON] ?: "" }
     val selectedFunctionId = dataStore.data.map { it[KEY_SELECTED_ID] ?: -1L }
     val draftExpression = dataStore.data.map { it[KEY_DRAFT] ?: "" }
@@ -47,6 +53,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setShowKeyHints(v: Boolean) = dataStore.edit { it[KEY_SHOW_KEY_HINTS] = v }
     suspend fun setShowKeyTabs(v: Boolean) = dataStore.edit { it[KEY_SHOW_KEY_TABS] = v }
 
+    suspend fun setAnimations(v: Boolean) = dataStore.edit { it[KEY_ANIMATIONS] = v }
+    suspend fun setEyeCareMode(v: Int) = dataStore.edit { it[KEY_EYE_CARE] = v }
+
     suspend fun setFunctionsJson(v: String) = dataStore.edit { it[KEY_FUNCTIONS_JSON] = v }
     suspend fun setSelectedFunctionId(v: Long) = dataStore.edit { it[KEY_SELECTED_ID] = v }
     suspend fun setDraftExpression(v: String) = dataStore.edit { it[KEY_DRAFT] = v }
@@ -63,6 +72,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_SHOW_HELP = booleanPreferencesKey("show_help_button")
         private val KEY_SHOW_KEY_HINTS = booleanPreferencesKey("show_key_hints")
         private val KEY_SHOW_KEY_TABS = booleanPreferencesKey("show_key_tabs")
+        private val KEY_ANIMATIONS = booleanPreferencesKey("animations")
+        private val KEY_EYE_CARE = intPreferencesKey("eye_care_mode")
         private val KEY_FUNCTIONS_JSON = stringPreferencesKey("functions_json")
         private val KEY_SELECTED_ID = longPreferencesKey("selected_function_id")
         private val KEY_DRAFT = stringPreferencesKey("draft_expression")
