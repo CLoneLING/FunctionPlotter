@@ -42,14 +42,8 @@ class MainActivity : ComponentActivity() {
             val warm = !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now())
 
             CompositionLocalProvider(LocalAnimationsEnabled provides animations) {
-                FunctionPlotterTheme(darkTheme = darkTheme) {
-                    Box(Modifier.fillMaxSize()) {
-                        AppNav()
-                        if (warm) {
-                            // 护眼：低透明度暖色覆盖，不拦截触摸
-                            Box(Modifier.fillMaxSize().background(EyeCareTint))
-                        }
-                    }
+                FunctionPlotterTheme(darkTheme = darkTheme, warm = warm) {
+                    AppNav()
                 }
             }
         }

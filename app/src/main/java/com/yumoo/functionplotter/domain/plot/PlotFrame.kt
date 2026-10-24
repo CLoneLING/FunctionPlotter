@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.domain.plot
 
+import kotlin.math.abs
 import androidx.compose.ui.graphics.Path
 import com.yumoo.functionplotter.data.model.PlotFunction
 import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
@@ -16,10 +17,13 @@ data class PlotCurve(
     val implicit: Boolean
 )
 
+data class PlotPoint(val x: Double, val y: Double)
+
 data class PlotFrame(
     val curves: List<PlotCurve>,
     val invalidIds: Set<Long>,
-    val equation: EquationInfo? = null
+    val equation: EquationInfo? = null,
+    val intersections: List<PlotPoint> = emptyList()
 ) {
     companion object {
         val Empty = PlotFrame(emptyList(), emptySet())
@@ -44,6 +48,7 @@ fun buildPlotFrame(
     val curves = ArrayList<PlotCurve>(functions.size)
     val invalid = HashSet<Long>()
     var equation: EquationInfo? = null
+    val explicit = ArrayList<Pair<Long, (Double) -> Double>>()
 
     for (function in functions) {
         if (!function.visible) continue
@@ -68,6 +73,7 @@ fun buildPlotFrame(
                                 implicit = false
                             )
                         )
+                        explicit += function.id to { x: Double -> prepared.eval(x) }
                     }
                 }
                 is PlotExpression.Implicit -> {
@@ -91,7 +97,7 @@ fun buildPlotFrame(
             invalid.add(function.id)
         }
     }
-    return PlotFrame(curves, invalid, equation)
+    return PlotFrame(curves, invalid, equation, findIntersections(explicit, viewport))
 }
 
 private fun solveEquation(
@@ -113,4 +119,68 @@ private fun solveEquation(
     } catch (t: Throwable) {
         null
     }
+}
+
+/** 两组显函数联立求交点：f(x)-g(x)=0 的实根即方程组的解。 */
+private fun findIntersections(
+    functions: List<Pair<Long, (Double) -> Double>>,
+    viewport: PlotViewport,
+    maxPoints: Int = 6
+): List<PlotPoint> {
+    if (functions.size < 2) return emptyList()
+    val result = ArrayList<PlotPoint>()
+    val samples = 480
+    val height = viewport.height
+    for (i in 0 until functions.size - 1) {
+        for (j in i + 1 until functions.size) {
+            val f = functions[i].second
+            val g = functions[j].second
+            var prevX = 0.0
+            var prevDiff = Double.NaN
+            for (k in 0..samples) {
+                val x = viewport.worldX(viewport.width * k / samples)
+                val a = f(x)
+                val b = g(x)
+                val diff = if (a.isFinite() && b.isFinite()) a - b else Double.NaN
+                if (!prevDiff.isNaN() && !diff.isNaN() && prevDiff * diff < 0) {
+                    val root = bisectIntersection(f, g, prevX, x)
+                    if (root != null) {
+                        val y = f(root)
+                        if (y.isFinite() && abs(y) < 1.0e7) {
+                            val sy = viewport.screenY(y)
+                            if (sy.isFinite() && sy > -height && sy < 2 * height) {
+                                val tooClose = result.any { abs(it.x - root) < 1.0e-6 }
+                                if (!tooClose) {
+                                    result += PlotPoint(root, y)
+                                    if (result.size >= maxPoints) return result
+                                }
+                            }
+                        }
+                    }
+                }
+                prevX = x
+                prevDiff = diff
+            }
+        }
+    }
+    return result
+}
+
+private fun bisectIntersection(
+    f: (Double) -> Double,
+    g: (Double) -> Double,
+    left: Double,
+    right: Double
+): Double? {
+    var a = left
+    var b = right
+    var fa = f(a) - g(a)
+    repeat(64) {
+        val mid = (a + b) / 2
+        val fm = f(mid) - g(mid)
+        if (!fm.isFinite()) return null
+        if (fa * fm <= 0) b = mid else { a = mid; fa = fm }
+    }
+    val root = (a + b) / 2
+    return if (root.isFinite()) root else null
 }

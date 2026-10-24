@@ -8,6 +8,24 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 
+private fun warmLightColorScheme() = lightColorScheme(
+    primary = WarmCoffee,
+    onPrimary = WarmSurface,
+    primaryContainer = WarmKhakiLight,
+    onPrimaryContainer = WarmCoffeeDark,
+    secondary = WarmCoffeeLight,
+    onSecondary = WarmSurface,
+    background = WarmBackground,
+    onBackground = WarmOnSurface,
+    surface = WarmSurface,
+    onSurface = WarmOnSurface,
+    surfaceVariant = WarmSurfaceVariant,
+    onSurfaceVariant = WarmOnSurface.copy(alpha = 0.82f),
+    outlineVariant = WarmOutline,
+    error = WarmError,
+    errorContainer = WarmError.copy(alpha = 0.14f)
+)
+
 private val AtomicShapesSpec = Shapes(
     extraSmall = RoundedCornerShape(12.dp),
     small = RoundedCornerShape(16.dp),
@@ -19,6 +37,7 @@ private val AtomicShapesSpec = Shapes(
 @Composable
 fun FunctionPlotterTheme(
     darkTheme: Boolean,
+    warm: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colors = if (darkTheme) {
@@ -37,6 +56,8 @@ fun FunctionPlotterTheme(
             outlineVariant = DarkOnSurface.copy(alpha = 0.14f),
             errorContainer = AccentRed.copy(alpha = 0.18f)
         )
+    } else if (warm) {
+        warmLightColorScheme()
     } else {
         lightColorScheme(
             primary = OceanBlue,

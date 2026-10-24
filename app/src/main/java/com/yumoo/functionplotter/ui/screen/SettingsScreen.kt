@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.ui.screen
 
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -281,7 +282,11 @@ private fun ChoiceRow(
                 FilterChip(
                     selected = selected == value,
                     onClick = { onSelect(value) },
-                    label = { Text(text, fontSize = 12.sp) }
+                    label = { Text(text, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 )
             }
         }

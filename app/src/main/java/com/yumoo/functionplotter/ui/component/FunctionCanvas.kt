@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.ui.component
 
+import com.yumoo.functionplotter.domain.plot.PlotPoint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -373,9 +374,10 @@ fun FunctionCanvas(
                 }
         )
         // 方程解信息：左下角淡灰小字，信息量大时点 "›" 查看全部
-        frame.equation?.let { equation ->
+        if (frame.equation != null || frame.intersections.isNotEmpty()) {
             EquationOverlay(
-                info = equation,
+                info = frame.equation,
+                intersections = frame.intersections,
                 modifier = Modifier
                     .align(if (rootsAtBottomEnd) Alignment.BottomEnd else Alignment.BottomStart)
                     .padding(
@@ -389,9 +391,11 @@ fun FunctionCanvas(
     }
 
     if (showEquationDialog) {
-        frame.equation?.let { equation ->
-            EquationDialog(info = equation, onDismiss = { showEquationDialog = false })
-        }
+        EquationDialog(
+            info = frame.equation,
+            intersections = frame.intersections,
+            onDismiss = { showEquationDialog = false }
+        )
     }
 }
 
@@ -399,13 +403,14 @@ fun FunctionCanvas(
 
 @Composable
 private fun EquationOverlay(
-    info: EquationInfo,
+    info: EquationInfo?,
+    intersections: List<PlotPoint>,
     modifier: Modifier,
     onShowAll: () -> Unit
 ) {
     val baseColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
     val style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = baseColor)
-    val summary = remember(info) { equationSummary(info) }
+    val summary = remember(info, intersections) { equationSummary(info, intersections) }
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(text = summary.text, style = style)
@@ -422,7 +427,11 @@ private fun EquationOverlay(
 }
 
 @Composable
-private fun EquationDialog(info: EquationInfo, onDismiss: () -> Unit) {
+private fun EquationDialog(
+    info: EquationInfo?,
+    intersections: List<PlotPoint>,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("方程的解") },
@@ -432,13 +441,16 @@ private fun EquationDialog(info: EquationInfo, onDismiss: () -> Unit) {
                     .heightIn(max = 420.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                if (info.isEmpty) {
+                intersections.forEachIndexed { index, point ->
+                    Text("交点${index + 1}：(${fmtXY(point.x)}, ${fmtXY(point.y)})")
+                }
+                if ((info?.roots ?: emptyList()).isEmpty()) {
                     Text("当前可视范围内没有实根。")
                 } else {
-                    info.roots.forEachIndexed { index, value ->
+                    (info?.roots ?: emptyList()).forEachIndexed { index, value ->
                         Text("x${subscript(index + 1)} = ${formatRoot(value)}")
                     }
-                    if (info.truncated) {
+                    if (info?.truncated == true) {
                         Text(
                             text = "根较多，仅显示前 ${info.roots.size} 个。放大后再看可减少数量。",
                             fontSize = 11.sp,
@@ -457,15 +469,36 @@ private fun EquationDialog(info: EquationInfo, onDismiss: () -> Unit) {
 
 private data class EquationSummary(val text: String, val expandable: Boolean)
 
-private fun equationSummary(info: EquationInfo): EquationSummary {
-    if (info.isEmpty) return EquationSummary("无实根", false)
-    val shown = info.roots.take(3)
-    val body = shown.mapIndexed { index, value ->
-        "x${subscript(index + 1)}=${formatRoot(value)}"
-    }.joinToString("  ")
-    val hasMore = info.roots.size > shown.size || info.truncated
-    return if (hasMore) EquationSummary("$body  …", true) else EquationSummary(body, false)
+private fun equationSummary(info: EquationInfo?, points: List<PlotPoint>): EquationSummary {
+    val parts = ArrayList<String>()
+    var expandable = false
+
+    if (info != null) {
+        if (info.isEmpty) {
+            parts += "无实根"
+        } else {
+            val shown = info.roots.take(3)
+            parts += shown.mapIndexed { index, value ->
+                "x${subscript(index + 1)}=${formatRoot(value)}"
+            }.joinToString("  ")
+            if (info.roots.size > shown.size || info.truncated) expandable = true
+        }
+    }
+
+    if (points.isNotEmpty()) {
+        val shown = points.take(2)
+        parts += shown.joinToString("  ") { "交点(${fmtXY(it.x)}, ${fmtXY(it.y)})" }
+        if (points.size > shown.size) expandable = true
+    }
+
+    if (parts.isEmpty()) return EquationSummary("", false)
+    val text = parts.joinToString("  ·  ")
+    return if (expandable) EquationSummary("$text  …", true) else EquationSummary(text, false)
 }
+
+/** 交点坐标统一三位小数，接近 0 显示 0。 */
+private fun fmtXY(value: Double): String =
+    if (abs(value) < 5.0e-4) "0" else String.format("%.3f", value)
 
 private fun subscript(index: Int): String = when (index) {
     1 -> "₁"
