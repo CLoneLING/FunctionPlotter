@@ -26,6 +26,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.yumoo.functionplotter.data.model.PlotFunction
 import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
 import com.yumoo.functionplotter.domain.parser.ExpressionCheck
 import com.yumoo.functionplotter.domain.parser.checkExpression
@@ -60,6 +62,16 @@ import com.yumoo.functionplotter.ui.util.rememberWindowClass
 import androidx.window.layout.FoldingFeature
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
+
+private data class CanvasArgs(
+    val withIsland: Boolean,
+    val resetToken: Int,
+    val functions: List<PlotFunction>,
+    val showGrid: Boolean,
+    val showAxisLabels: Boolean,
+    val sampleStep: Float,
+    val onInvalid: (Set<Long>) -> Unit
+)
 
 @Composable
 fun PlotterScreen(
@@ -153,17 +165,35 @@ fun PlotterScreen(
         )
     }
 
+    // movableContentOf：横竖屏布局切换时画布"搬家"而不是重建，
+    // 内部的相机视角、读数标记等状态得以保留。
+    val canvasContent = remember {
+        movableContentOf<CanvasArgs> { args ->
+            FunctionCanvas(
+                functions = args.functions,
+                showGrid = args.showGrid,
+                showAxisLabels = args.showAxisLabels,
+                sampleStep = args.sampleStep,
+                modifier = Modifier.fillMaxSize(),
+                resetToken = args.resetToken,
+                rootsAtBottomEnd = args.withIsland,
+                onInvalidIdsChange = args.onInvalid
+            )
+        }
+    }
+
     val canvasPane: @Composable (Boolean) -> Unit = { withIsland ->
         Box(Modifier.fillMaxSize()) {
-            FunctionCanvas(
-                functions = functions,
-                showGrid = showGrid,
-                showAxisLabels = showAxisLabels,
-                sampleStep = sampleStep,
-                modifier = Modifier.fillMaxSize(),
-                resetToken = resetToken,
-                rootsAtBottomEnd = withIsland,
-                onInvalidIdsChange = { invalidIds = it }
+            canvasContent(
+                CanvasArgs(
+                    withIsland = withIsland,
+                    resetToken = resetToken,
+                    functions = functions,
+                    showGrid = showGrid,
+                    showAxisLabels = showAxisLabels,
+                    sampleStep = sampleStep,
+                    onInvalid = { invalidIds = it }
+                )
             )
             if (withIsland) {
                 CanvasIsland(

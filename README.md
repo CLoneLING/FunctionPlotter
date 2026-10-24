@@ -1,4 +1,4 @@
-
+![icon](./app_icon.ico)
 # FunctionPlotter
 
 一个简洁的 Android 函数图像绘制工具。
@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
 
-当前版本：**1.1.1**（versionCode 20261028）
+当前版本：**1.1.2**（versionCode 20261029）
 
 ---
 
