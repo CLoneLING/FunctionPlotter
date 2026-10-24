@@ -1,5 +1,4 @@
  ![icon](./app_icon.ico) 
- 
 # FunctionPlotter 
 
 一个简洁的 Android 函数图像绘制工具。
