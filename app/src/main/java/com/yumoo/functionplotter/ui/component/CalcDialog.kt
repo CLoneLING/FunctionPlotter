@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.ui.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -127,16 +128,22 @@ private fun CalcFieldRow(
     active: Boolean,
     onClick: () -> Unit
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { },
-        readOnly = true,
-        label = { Text(label, fontSize = 12.sp) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = true,
-        colors = MaterialTheme.colorScheme.let { androidx.compose.material3.OutlinedTextFieldDefaults.colors() }
-    )
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { },
+            readOnly = true,
+            label = { Text(label, fontSize = 12.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        // 透明层接管点击：切换当前输入目标，且不唤起输入法
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick)
+        )
+    }
     if (active) {
         Text(
             text = "◀ 正在输入",
@@ -146,7 +153,6 @@ private fun CalcFieldRow(
         )
     }
 }
-
 @Composable
 private fun CalcKeypad(
     onKey: (String) -> Unit,
@@ -158,7 +164,7 @@ private fun CalcKeypad(
         listOf("7", "8", "9", "/", "π"),
         listOf("4", "5", "6", "[", "]"),
         listOf("1", "2", "3", "(", ")"),
-        listOf("0", ".", "∪", "∩", "−")
+        listOf("0", ".", ",", "∪", "∩")
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         rows.forEach { row ->
@@ -214,6 +220,14 @@ private fun parseSimple(text: String): Double? {
         "π", "pi" -> Math.PI
         "" -> 1.0
         else -> s.toDoubleOrNull()
+    }
+    // 3π、2π、π/2 这类隐式乘法
+    val implicit = Regex("(\\d)\\s*π|(\\d)\\s*pi")
+    if (implicit.containsMatchIn(t)) {
+        val replaced = t
+            .replace("π", "*π").replace("pi", "*pi")
+            .replace("*π", Math.PI.toString()).replace("*pi", Math.PI.toString())
+        return parseSimple(replaced.replace("**", "*"))
     }
     if ('/' in t) {
         val parts = t.split('/')

@@ -21,7 +21,9 @@ data class SettingsUiState(
     val showKeyTabs: Boolean = false,
     val animations: Boolean = true,
     val eyeCareMode: Int = 1,
-    val poemEnabled: Boolean = false
+    val poemEnabled: Boolean = false,
+    val eyeCareStart: Int = 20,
+    val eyeCareEnd: Int = 7
 )
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
@@ -50,6 +52,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         state.copy(eyeCareMode = eye)
     }.combine(repository.poemEnabled) { state, poem ->
         state.copy(poemEnabled = poem)
+    }.combine(repository.eyeCareStart) { state, start ->
+        state.copy(eyeCareStart = start)
+    }.combine(repository.eyeCareEnd) { state, end ->
+        state.copy(eyeCareEnd = end)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -69,4 +75,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     fun setAnimations(value: Boolean) = viewModelScope.launch { repository.setAnimations(value) }
     fun setEyeCareMode(value: Int) = viewModelScope.launch { repository.setEyeCareMode(value) }
     fun setPoemEnabled(value: Boolean) = viewModelScope.launch { repository.setPoemEnabled(value) }
+    fun setEyeCareStart(value: Int) = viewModelScope.launch { repository.setEyeCareStart(value) }
+    fun setEyeCareEnd(value: Int) = viewModelScope.launch { repository.setEyeCareEnd(value) }
 }

@@ -103,8 +103,22 @@ fun SettingsScreen(
                     selected = state.eyeCareMode,
                     onSelect = viewModel::setEyeCareMode
                 )
+                if (state.eyeCareMode == 1) {
+                    ChoiceRow(
+                        label = "护眼时段（开始）",
+                        options = listOf("18" to 18, "19" to 19, "20" to 20, "21" to 21, "22" to 22),
+                        selected = state.eyeCareStart,
+                        onSelect = viewModel::setEyeCareStart
+                    )
+                    ChoiceRow(
+                        label = "护眼时段（结束）",
+                        options = listOf("5" to 5, "6" to 6, "7" to 7, "8" to 8, "9" to 9),
+                        selected = state.eyeCareEnd,
+                        onSelect = viewModel::setEyeCareEnd
+                    )
+                }
                 SwitchRow("界面动效", state.animations, viewModel::setAnimations)
-                SwitchRow("空画布显示诗词", state.poemEnabled, viewModel::setPoemEnabled)
+                SwitchRow("画布常驻诗词", state.poemEnabled, viewModel::setPoemEnabled)
             }
 
             SectionCard("界面模块") {
@@ -236,6 +250,10 @@ private val ABOUT_MARKDOWN = """
 
     ### 隐私说明
     不收集、不上传任何个人数据；表达式与设置只保存在本机，仅在检查更新时访问 GitHub 公开接口。
+
+    ### 鸣谢
+    - API：一言（hitokoto.cn）、GitHub Releases
+    - 开源：Jetpack Compose、OkHttp、Retrofit、exp4j、Gson（MIT / Apache-2.0）
 
     ### 开源许可
     MIT License · 表达式求值使用 exp4j

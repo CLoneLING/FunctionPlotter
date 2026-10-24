@@ -115,6 +115,7 @@ fun FunctionCanvas(
     modifier: Modifier = Modifier,
     resetToken: Int = 0,
     rootsAtBottomEnd: Boolean = false,
+    domainText: String? = null,
     onInvalidIdsChange: (Set<Long>) -> Unit = {}
 ) {
     val evaluator = remember { Exp4jEvaluator() }
@@ -374,10 +375,11 @@ fun FunctionCanvas(
                 }
         )
         // 方程解信息：左下角淡灰小字，信息量大时点 "›" 查看全部
-        if (frame.equation != null || frame.intersections.isNotEmpty()) {
+        if (frame.equation != null || frame.intersections.isNotEmpty() || !domainText.isNullOrBlank()) {
             EquationOverlay(
                 info = frame.equation,
                 intersections = frame.intersections,
+                domainText = domainText,
                 modifier = Modifier
                     .align(if (rootsAtBottomEnd) Alignment.BottomEnd else Alignment.BottomStart)
                     .padding(
@@ -405,12 +407,13 @@ fun FunctionCanvas(
 private fun EquationOverlay(
     info: EquationInfo?,
     intersections: List<PlotPoint>,
+    domainText: String?,
     modifier: Modifier,
     onShowAll: () -> Unit
 ) {
     val baseColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
     val style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = baseColor)
-    val summary = remember(info, intersections) { equationSummary(info, intersections) }
+    val summary = remember(info, intersections, domainText) { equationSummary(info, intersections, domainText) }
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(text = summary.text, style = style)
@@ -469,7 +472,11 @@ private fun EquationDialog(
 
 private data class EquationSummary(val text: String, val expandable: Boolean)
 
-private fun equationSummary(info: EquationInfo?, points: List<PlotPoint>): EquationSummary {
+private fun equationSummary(
+    info: EquationInfo?,
+    points: List<PlotPoint>,
+    domainText: String?
+): EquationSummary {
     val parts = ArrayList<String>()
     var expandable = false
 
@@ -483,6 +490,10 @@ private fun equationSummary(info: EquationInfo?, points: List<PlotPoint>): Equat
             }.joinToString("  ")
             if (info.roots.size > shown.size || info.truncated) expandable = true
         }
+    }
+
+    if (!domainText.isNullOrBlank()) {
+        parts += "定义域 ${domainText.trim()}"
     }
 
     if (points.isNotEmpty()) {

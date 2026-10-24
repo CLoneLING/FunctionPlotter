@@ -39,7 +39,9 @@ class MainActivity : ComponentActivity() {
             }
             val animations by repository.animations.collectAsState(initial = true)
             val eyeCareMode by repository.eyeCareMode.collectAsState(initial = 1)
-            val warm = !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now())
+            val startHour by repository.eyeCareStart.collectAsState(initial = 20)
+            val endHour by repository.eyeCareEnd.collectAsState(initial = 7)
+            val warm = !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now(), startHour, endHour)
 
             CompositionLocalProvider(LocalAnimationsEnabled provides animations) {
                 FunctionPlotterTheme(darkTheme = darkTheme, warm = warm) {
@@ -69,8 +71,12 @@ class MainActivity : ComponentActivity() {
 private val EyeCareTint = Color(0x16FF8A2B)
 
 /** 0 关闭 / 1 定时 20:00–次日 7:00 / 2 常开。 */
-private fun eyeCareActive(mode: Int, now: LocalTime): Boolean = when (mode) {
+private fun eyeCareActive(mode: Int, now: LocalTime, startHour: Int, endHour: Int): Boolean = when (mode) {
     2 -> true
-    1 -> now.hour >= 20 || now.hour < 7
+    1 -> if (startHour <= endHour) {
+        now.hour in startHour until endHour
+    } else {
+        now.hour >= startHour || now.hour < endHour
+    }
     else -> false
 }

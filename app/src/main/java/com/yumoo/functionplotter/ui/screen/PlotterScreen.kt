@@ -72,6 +72,7 @@ import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 
 private data class CanvasArgs(
     val withIsland: Boolean,
+    val domainText: String? = null,
     val resetToken: Int,
     val functions: List<PlotFunction>,
     val showGrid: Boolean,
@@ -124,6 +125,11 @@ fun PlotterScreen(
         } else {
             plotAlpha.snapTo(1f)
         }
+    }
+
+    val selectedExpression = functions.firstOrNull { it.id == selectedId }?.expression.orEmpty()
+    val domainText = remember(selectedExpression) {
+        com.yumoo.functionplotter.domain.solver.DomainProbe.describe(selectedExpression)
     }
 
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -215,6 +221,7 @@ fun PlotterScreen(
                 modifier = Modifier.fillMaxSize(),
                 resetToken = args.resetToken,
                 rootsAtBottomEnd = args.withIsland,
+                domainText = args.domainText,
                 onInvalidIdsChange = args.onInvalid
             )
         }
@@ -229,6 +236,7 @@ fun PlotterScreen(
             canvasContent(
                 CanvasArgs(
                     withIsland = withIsland,
+                    domainText = domainText,
                     resetToken = resetToken,
                     functions = functions,
                     showGrid = showGrid,
