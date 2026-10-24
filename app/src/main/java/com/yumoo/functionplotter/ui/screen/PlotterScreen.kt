@@ -1,6 +1,7 @@
 package com.yumoo.functionplotter.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,7 +55,9 @@ import com.yumoo.functionplotter.ui.component.SyntaxHelpDialog
 import com.yumoo.functionplotter.ui.component.UpdateBanner
 import com.yumoo.functionplotter.ui.theme.AtomicShapes
 import com.yumoo.functionplotter.ui.theme.atomicSurface
+import com.yumoo.functionplotter.ui.util.rememberFoldingFeature
 import com.yumoo.functionplotter.ui.util.rememberWindowClass
+import androidx.window.layout.FoldingFeature
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
 
@@ -179,10 +184,29 @@ fun PlotterScreen(
         .padding(horizontal = 8.dp)
 
     if (windowClass.useTwoPane) {
+        val density = LocalDensity.current
+        val folding = rememberFoldingFeature()
+        val verticalHinge = folding != null &&
+            folding.isSeparating &&
+            folding.orientation == FoldingFeature.Orientation.VERTICAL
+        val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+
+        // 折叠屏：左栏铺到铰链左边缘，铰链宽度整段留空；平板：左栏占 34%
+        val controlsWidth = if (verticalHinge && folding != null) {
+            with(density) { folding.bounds.left.toDp() } - 8.dp
+        } else {
+            (screenWidth * 0.34f).coerceIn(320.dp, 520.dp)
+        }.coerceIn(260.dp, screenWidth - 240.dp)
+        val hingeGap = if (verticalHinge && folding != null) {
+            with(density) { folding.bounds.width().toDp() }
+        } else {
+            8.dp
+        }
+
         Row(modifier = container) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(controlsWidth)
                     .fillMaxHeight()
             ) {
                 chipsRow()
@@ -198,19 +222,20 @@ fun PlotterScreen(
                 keyboard(52.dp)
             }
 
-            Box(
-                Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .padding(vertical = 12.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
-            )
+            Spacer(Modifier.width(hingeGap))
 
+            // 画布做成圆角面板，弱化左右分区感
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .padding(start = 8.dp)
+                    .clip(AtomicShapes.Card)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = AtomicShapes.Card
+                    )
             ) {
                 canvasPane(true)
             }
