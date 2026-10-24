@@ -80,6 +80,26 @@ fun buildPlotFrame(
                     // 只含 x 的方程（如 1/(x-1)=0）只求解，不画曲线，
                     // 否则会在分母零点处画出无意义的竖线。
                     if (!function.expression.contains("y")) {
+                        // 一元方程：图像是 x = 根 的竖直直线
+                        val info = solveEquation(evaluator, function.expression, viewport)
+                        if (info != null && info.roots.isNotEmpty()) {
+                            val path = Path()
+                            for (root in info.roots) {
+                                val sx = viewport.screenX(root)
+                                if (sx.isFinite() && sx > -1e5f && sx < 1e5f) {
+                                    path.moveTo(sx, 0f)
+                                    path.lineTo(sx, viewport.height)
+                                }
+                            }
+                            curves.add(
+                                PlotCurve(
+                                    id = function.id,
+                                    colorArgb = function.colorArgb,
+                                    path = path,
+                                    implicit = false
+                                )
+                            )
+                        }
                         continue
                     }
                     val prepared = evaluator.prepareImplicit(parsed.expr)
