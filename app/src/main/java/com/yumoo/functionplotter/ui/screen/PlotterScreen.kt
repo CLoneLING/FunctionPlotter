@@ -128,8 +128,10 @@ fun PlotterScreen(
     }
 
     val selectedExpression = functions.firstOrNull { it.id == selectedId }?.expression.orEmpty()
+    // 只有函数才给定义域；方程（含 =）只给根
     val domainText = remember(selectedExpression) {
-        com.yumoo.functionplotter.domain.solver.DomainProbe.describe(selectedExpression)
+        if (selectedExpression.contains("=")) null
+        else com.yumoo.functionplotter.domain.solver.DomainProbe.describe(selectedExpression)
     }
 
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -251,8 +253,10 @@ fun PlotterScreen(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(start = 24.dp, end = 24.dp, bottom = 28.dp)
+                        .align(Alignment.TopCenter)
+                        .padding(start = 24.dp, end = 24.dp, top = 10.dp),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
 
