@@ -20,6 +20,7 @@ class UpdateManager(private val context: Context) {
 
     /** 从版本说明里解析出的 SHA-256，下载后用于校验。 */
     private var expectedSha256: String? = null
+    private var expectedVersion: String? = null
 
     private val owner = "CLoneLING"
     private val repo = "FunctionPlotter"
@@ -57,6 +58,7 @@ class UpdateManager(private val context: Context) {
             val downloadUrl = apkAsset.browserDownloadUrl ?: return UpdateResult.NoApkFound
 
             expectedSha256 = extractSha256(release.body ?: "")
+            expectedVersion = latestTag
 
             UpdateResult.Available(
                 version = latestTag,
@@ -184,6 +186,16 @@ class UpdateManager(private val context: Context) {
     fun installDownloadedApk(): Boolean {
         val apkFile = downloadedApkFile()
         if (!apkFile.exists()) return false
+
+        // 安装前校验版本号，避免把残留的旧安装包装上
+        expectedVersion?.let { expected ->
+            val info = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+            val actual = info?.versionName
+            if (actual != null && actual != expected) {
+                apkFile.delete()
+                return false
+            }
+        }
 
         if (!canInstallPackages()) {
             context.startActivity(installPermissionIntent())
