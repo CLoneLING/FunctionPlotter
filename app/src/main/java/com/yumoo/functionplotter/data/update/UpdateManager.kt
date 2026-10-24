@@ -191,8 +191,9 @@ class UpdateManager(private val context: Context) {
         Regex("SHA-?256[^0-9a-fA-F]*([0-9a-fA-F]{64})")
             .find(text)?.groupValues?.getOrNull(1)
 
-    fun installDownloadedApk(): Boolean {
-        val apkFile = downloadedApkFile()
+    fun expectedSha(): String? = expectedSha256
+
+    fun installApkFile(apkFile: File): Boolean {
         if (!apkFile.exists()) return false
 
         // 安装前校验版本号，避免把残留的旧安装包装上
@@ -223,6 +224,8 @@ class UpdateManager(private val context: Context) {
         context.startActivity(intent)
         return true
     }
+
+    fun installDownloadedApk(): Boolean = installApkFile(downloadedApkFile())
 
     private fun downloadedApkFile(): File = File(
         context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),

@@ -1,32 +1,38 @@
 package com.yumoo.functionplotter.viewmodel
 
+import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yumoo.functionplotter.BuildConfig
 import com.yumoo.functionplotter.FunctionPlotterApp
+import com.yumoo.functionplotter.data.update.ApkDownloader
 import com.yumoo.functionplotter.data.update.DownloadNotifications
 import com.yumoo.functionplotter.data.update.UpdateManager
 import com.yumoo.functionplotter.data.update.UpdateResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 更新流程的唯一状态源。
  *
- * 挂在这一层（Activity 作用域）而不是某个页面，是为了让"设置页检查更新"
- * 和"启动时自动检查"共用同一份状态，也方便下载在页面切换后继续。
+ * 下载改用 [ApkDownloader]（OkHttp 流式下载）而不是系统 DownloadManager：
+ * 系统下载器在目标文件已存在、任务被清理、厂商省电策略下行为不可控，
+ * 曾导致"一直装回旧版本"和"卡 0% 无反馈"。
  */
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = (app as FunctionPlotterApp).settingsRepository
     private val manager = UpdateManager(app)
+    private val downloader = ApkDownloader(app)
     private val notifications = DownloadNotifications(app)
 
     private val _checking = MutableStateFlow(false)
@@ -45,31 +51,17 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pendingUrl: String? = null
     private var autoCheckStarted = false
-    private var observeJob: Job? = null
+    private var downloadJob: Job? = null
 
-    init {
-        // 进程重启后如果还有未完成的下载，接着跟踪进度
-        viewModelScope.launch {
-            val storedId = repository.pendingDownloadId.first()
-            if (storedId > 0) {
-                _progress.value = 0
-                observe(storedId)
-            }
-        }
-    }
+    private var targetVersion: String? = null
+    private var targetSha256: String? = null
 
-    /**
-     * 启动时自动检查，最多每 24 小时一次。
-     * 之前这个开关只是把值写进 DataStore，没有任何代码读它，属于空开关。
-     */
     fun autoCheckOnce() {
         if (autoCheckStarted) return
         autoCheckStarted = true
         viewModelScope.launch {
             if (!repository.autoCheckUpdate.first()) return@launch
-            val lastCheck = repository.lastUpdateCheck.first()
             val now = System.currentTimeMillis()
-            // 每次冷启动检查一次，不再做 24 小时节流
 
             _checking.value = true
             val result = manager.checkForUpdate(BuildConfig.VERSION_NAME)
@@ -79,8 +71,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
                 repository.setLastUpdateCheck(now)
             }
             if (result is UpdateResult.Available) {
-                parseMirror(result.notes)
-                _available.value = result
+                onAvailable(result)
             }
         }
     }
@@ -96,10 +87,16 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
             repository.setLastUpdateCheck(System.currentTimeMillis())
         }
         if (result is UpdateResult.Available) {
-            parseMirror(result.notes)
-            _available.value = result
+            onAvailable(result)
         }
         return result
+    }
+
+    private fun onAvailable(result: UpdateResult.Available) {
+        parseMirror(result.notes)
+        targetVersion = result.version
+        targetSha256 = manager.expectedSha()
+        _available.value = result
     }
 
     fun dismissAvailable() {
@@ -135,21 +132,17 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     fun installPermissionIntent(): Intent = manager.installPermissionIntent()
 
-    /**
-     * 下载入口：先确认「安装未知应用」权限。
-     * 没权限就不下载，只把用户送去授权页；返回后由 onResume 续上。
-     */
     fun requestDownload(url: String) {
         if (_progress.value != null) return
-        if (manager.canInstallPackages()) {
-            startDownload(url)
-        } else {
+        if (!manager.canInstallPackages()) {
             pendingUrl = url
             _permissionRequests.value += 1
+            return
         }
+        startDownload(url)
     }
 
-    /** 页面回到前台时调用：用户从系统设置授权回来后自动开始下载。 */
+    /** 从系统「安装未知应用」设置返回后继续下载。 */
     fun onResume() {
         val url = pendingUrl ?: return
         if (manager.canInstallPackages()) {
@@ -160,50 +153,52 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dismissProgress() {
-        // 只隐藏应用内进度条，下载与通知继续
+        // 只隐藏应用内进度条，下载继续（通知栏仍有进度）
         _progress.value = null
     }
 
     fun install() {
-        manager.installDownloadedApk()
+        val version = targetVersion
+        val file: File? = if (version != null) downloader.apkFor(version) else null
+        if (file != null && file.exists()) {
+            manager.installApkFile(file)
+        } else {
+            manager.installDownloadedApk()
+        }
         _progress.value = null
         notifications.clear()
     }
 
     private fun startDownload(url: String) {
+        val version = targetVersion ?: return
         _available.value = null
         _progress.value = 0
         notifications.ensureChannel()
-        val id = manager.downloadApk(url)
-        if (id <= 0) {
-            _progress.value = -1
-            return
-        }
-        viewModelScope.launch { repository.setPendingDownloadId(id) }
-        observe(id)
-    }
 
-    private fun observe(downloadId: Long) {
-        observeJob?.cancel()
-        observeJob = viewModelScope.launch {
-            manager.observeProgress(downloadId).collect { percent ->
-                _progress.value = percent
-                when {
-                    percent < 0 -> {
-                        notifications.failed()
-                        repository.setPendingDownloadId(-1)
-                    }
-                    percent >= 100 -> {
-                        notifications.complete()
-                        repository.setPendingDownloadId(-1)
-                    }
-                    else -> notifications.progress(percent)
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            val file = withContext(Dispatchers.IO) {
+                downloader.download(url, version) { percent ->
+                    _progress.value = percent
+                    notifications.progress(percent)
                 }
             }
+            if (file == null) {
+                _progress.value = -1
+                notifications.failed()
+                return@launch
+            }
+            val verified = withContext(Dispatchers.IO) {
+                downloader.verifySha256(file, targetSha256)
+            }
+            if (!verified) {
+                file.delete()
+                _progress.value = -1
+                notifications.failed()
+                return@launch
+            }
+            _progress.value = 100
+            notifications.complete()
         }
-    }
-
-    private companion object {
-        const val CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
     }
 }
