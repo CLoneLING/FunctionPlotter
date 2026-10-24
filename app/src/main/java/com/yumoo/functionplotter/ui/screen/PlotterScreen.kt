@@ -237,7 +237,7 @@ fun PlotterScreen(
                     onInvalid = { invalidIds = it }
                 )
             )
-            if (poemText != null && functions.all { it.expression.isBlank() }) {
+            if (poemText != null) {
                 Text(
                     text = poemText.orEmpty(),
                     fontSize = 12.sp,

@@ -31,7 +31,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val animations = dataStore.data.map { it[KEY_ANIMATIONS] ?: true }
 
     /** 空画布时展示一句诗词（默认关闭）。 */
-    val poemEnabled = dataStore.data.map { it[KEY_POEM] ?: false }
+    val poemEnabled = dataStore.data.map { it[KEY_POEM] ?: true }
 
     /** 护眼模式：0 关闭 / 1 定时（20:00–次日 7:00）/ 2 常开，默认定时。 */
     val eyeCareMode = dataStore.data.map { it[KEY_EYE_CARE] ?: 1 }
