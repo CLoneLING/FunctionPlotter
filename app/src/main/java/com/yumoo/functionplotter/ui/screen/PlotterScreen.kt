@@ -50,6 +50,8 @@ import com.yumoo.functionplotter.ui.component.FunctionChips
 import com.yumoo.functionplotter.ui.component.MathKeyboard
 import com.yumoo.functionplotter.ui.component.SyntaxHelpDialog
 import com.yumoo.functionplotter.ui.component.UpdateBanner
+import com.yumoo.functionplotter.ui.theme.AtomicShapes
+import com.yumoo.functionplotter.ui.theme.atomicSurface
 import com.yumoo.functionplotter.ui.util.rememberWindowClass
 import com.yumoo.functionplotter.viewmodel.PlotterViewModel
 import com.yumoo.functionplotter.viewmodel.UpdateViewModel
@@ -187,6 +189,12 @@ fun PlotterScreen(
                 inputArea()
                 UpdateBanner(viewModel = updateViewModel)
                 Spacer(Modifier.weight(1f))
+                LargeScreenInfo(
+                    functions = functions,
+                    selectedId = selectedId,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+                Spacer(Modifier.weight(1f))
                 keyboard(52.dp)
             }
 
@@ -227,6 +235,47 @@ fun PlotterScreen(
 
     if (showHelp) {
         SyntaxHelpDialog(onDismiss = { showHelp = false })
+    }
+}
+
+/** 大屏横屏专属：填充左栏中部，展示当前函数与操作提示。 */
+@Composable
+private fun LargeScreenInfo(
+    functions: List<com.yumoo.functionplotter.data.model.PlotFunction>,
+    selectedId: Long,
+    modifier: Modifier = Modifier
+) {
+    val selected = functions.firstOrNull { it.id == selectedId }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .atomicSurface(com.yumoo.functionplotter.ui.theme.AtomicShapes.Card)
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = "当前函数",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+        )
+        Text(
+            text = selected?.expression?.ifBlank { "(空)" } ?: "—",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2
+        )
+        Text(
+            text = "共 ${functions.size} 条 · 点上方标签切换",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(Modifier.padding(top = 2.dp))
+        Text(
+            text = "拖动平移 · 双指缩放 · 点按读数",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+        )
     }
 }
 
