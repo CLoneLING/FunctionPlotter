@@ -1,7 +1,9 @@
 package com.yumoo.functionplotter.viewmodel
 
-import android.app.Application
 import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yumoo.functionplotter.BuildConfig
@@ -77,6 +79,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
                 repository.setLastUpdateCheck(now)
             }
             if (result is UpdateResult.Available) {
+                parseMirror(result.notes)
                 _available.value = result
             }
         }
@@ -93,6 +96,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
             repository.setLastUpdateCheck(System.currentTimeMillis())
         }
         if (result is UpdateResult.Available) {
+            parseMirror(result.notes)
             _available.value = result
         }
         return result
@@ -100,6 +104,33 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissAvailable() {
         _available.value = null
+    }
+
+    /** 版本说明里带的蓝奏云备用下载信息。 */
+    private var mirrorUrl: String? = null
+    private var mirrorCode: String? = null
+
+    fun hasMirror(): Boolean = mirrorUrl != null
+
+    /** 打开蓝奏云分享页（浏览器），并提示提取码。 */
+    fun openMirror() {
+        val url = mirrorUrl ?: return
+        try {
+            val context = getApplication<Application>()
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            mirrorCode?.let {
+                Toast.makeText(context, "提取码：$it", Toast.LENGTH_LONG).show()
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun parseMirror(notes: String) {
+        mirrorUrl = Regex("蓝奏云[:：]\\s*(https?://\\S+)").find(notes)?.groupValues?.getOrNull(1)
+        mirrorCode = Regex("提取码[:：]\\s*([A-Za-z0-9]+)").find(notes)?.groupValues?.getOrNull(1)
     }
 
     fun installPermissionIntent(): Intent = manager.installPermissionIntent()

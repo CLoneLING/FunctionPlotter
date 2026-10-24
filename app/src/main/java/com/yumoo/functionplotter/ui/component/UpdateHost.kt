@@ -122,6 +122,8 @@ fun UpdateBanner(viewModel: UpdateViewModel, modifier: Modifier = Modifier) {
             }
             if (current >= 100) {
                 TextButton(onClick = viewModel::install) { Text("安装") }
+            } else if (current < 0 && viewModel.hasMirror()) {
+                TextButton(onClick = viewModel::openMirror) { Text("蓝奏云下载") }
             } else {
                 TextButton(onClick = viewModel::dismissProgress) { Text("隐藏") }
             }
