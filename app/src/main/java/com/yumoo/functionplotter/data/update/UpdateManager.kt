@@ -109,6 +109,8 @@ class UpdateManager(private val context: Context) {
     fun observeProgress(downloadId: Long): Flow<Int> = flow {
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         var missingRounds = 0
+        var lastDownloaded = -1L
+        var stalledRounds = 0
         while (true) {
             val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
             try {
@@ -123,6 +125,12 @@ class UpdateManager(private val context: Context) {
                     val status = cursor.getInt(
                         cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
                     )
+                    if (downloaded == lastDownloaded) stalledRounds++ else { stalledRounds = 0; lastDownloaded = downloaded }
+                    // 超过 ~60 秒完全没有进度视为卡死，交回上层切备用源
+                    if (stalledRounds > 150 && status == DownloadManager.STATUS_RUNNING) {
+                        emit(-1)
+                        return@flow
+                    }
                     if (total > 0) {
                         emit((downloaded * 100 / total).toInt().coerceIn(0, 100))
                     }
