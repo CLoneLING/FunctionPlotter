@@ -112,6 +112,8 @@ fun FunctionCanvas(
     showAxisLabels: Boolean,
     sampleStep: Float,
     modifier: Modifier = Modifier,
+    resetToken: Int = 0,
+    rootsAtBottomEnd: Boolean = false,
     onInvalidIdsChange: (Set<Long>) -> Unit = {}
 ) {
     val evaluator = remember { Exp4jEvaluator() }
@@ -123,6 +125,16 @@ fun FunctionCanvas(
     var livePan by remember { mutableStateOf(Offset.Zero) }
     var tapInfo by remember { mutableStateOf<TapInfo?>(null) }
     var showEquationDialog by remember { mutableStateOf(false) }
+
+    // 大屏悬浮功能岛通过自增 token 请求复位视图
+    LaunchedEffect(resetToken) {
+        if (resetToken > 0) {
+            camera = Camera.Default
+            liveZoom = 1f
+            livePan = Offset.Zero
+            tapInfo = null
+        }
+    }
 
     val width = canvasSize.width.toFloat()
     val height = canvasSize.height.toFloat()
@@ -365,8 +377,12 @@ fun FunctionCanvas(
             EquationOverlay(
                 info = equation,
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 16.dp),
+                    .align(if (rootsAtBottomEnd) Alignment.BottomEnd else Alignment.BottomStart)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = if (rootsAtBottomEnd) 56.dp else 16.dp
+                    ),
                 onShowAll = { showEquationDialog = true }
             )
         }

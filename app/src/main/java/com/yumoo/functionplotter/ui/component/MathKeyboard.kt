@@ -197,7 +197,8 @@ fun MathKeyboard(
     onClear: () -> Unit,
     onReplace: (String) -> Unit,
     showHints: Boolean = true,
-    showTabs: Boolean = true
+    showTabs: Boolean = true,
+    keyHeight: androidx.compose.ui.unit.Dp = 44.dp
 ) {
     val pagerState = rememberPagerState { PAGES.size }
     val scope = rememberCoroutineScope()
@@ -245,7 +246,7 @@ fun MathKeyboard(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp * maxRows + 4.dp),
+                .height((keyHeight + 6.dp) * maxRows + 4.dp),
             verticalAlignment = Alignment.Top
         ) { pageIndex ->
             val page = PAGES[pageIndex]
@@ -256,6 +257,7 @@ fun MathKeyboard(
                             KeyButton(
                                 calcKey = calcKey,
                                 showHints = showHints,
+                                keyHeight = keyHeight,
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     when (calcKey.action) {
@@ -313,6 +315,7 @@ private fun KeyButton(
     calcKey: CalcKey,
     modifier: Modifier,
     showHints: Boolean,
+    keyHeight: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit
 ) {
     val containerColor = when {
@@ -341,7 +344,7 @@ private fun KeyButton(
         interactionSource = interaction,
         modifier = modifier
             .padding(3.dp)
-            .height(44.dp)
+            .height(keyHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
