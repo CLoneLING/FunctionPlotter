@@ -1,41 +1,53 @@
 package com.yumoo.functionplotter.domain.solver
 
 /**
- * 用采样法估计函数在某个范围里的定义域，输出 [a,b) ∪ ... 形式。
- * 只用来给出"大致可用区间"，不做符号推导。
+ * 按表达式结构推导理论定义域（不做数值采样）。
+ *
+ * 只覆盖常见约束：tan/sec、cot/csc、log/ln/lg、sqrt、除以变量。
+ * 输出是给人看的约束式，例如：
+ *  - 1/x            → x ≠ 0
+ *  - tan(x)         → x ≠ π/2 + kπ（k∈ℤ）
+ *  - ln(x)          → x > 0
+ *  - sqrt(x)        → x ≥ 0
+ *  - x^2            → (-∞, +∞)
  */
 object DomainProbe {
 
-    fun describe(expression: String, from: Double = -50.0, to: Double = 50.0): String? {
+    private val TAN = Regex("(tan|sec)\\s*\\(")
+    private val COT = Regex("(cot|csc)\\s*\\(")
+    private val LOG = Regex("(log10|log|ln|lg)\\s*\\(([^()]*)\\)")
+    private val SQRT = Regex("(sqrt|√|∛)\\s*\\(([^()]*)\\)")
+    private val DIVIDE_X = Regex("/\\s*\\(?\\s*x\\s*\\)?(?![a-zA-Z0-9])")
+
+    fun describe(expression: String): String? {
         if (expression.isBlank()) return null
-        val samples = 400
-        val xs = DoubleArray(samples + 1) { from + (to - from) * it / samples }
-        val valid = BooleanArray(samples + 1) { FunctionProbe.evalAt(expression, xs[it]) != null }
+        val e = expression.lowercase().replace(" ", "")
+        if (e.isEmpty()) return null
 
-        if (valid.all { it }) return "(-∞, +∞)"
-        if (valid.none { it }) return null
+        val constraints = LinkedHashSet<String>()
 
-        val parts = ArrayList<String>()
-        var start = -1
-        for (i in valid.indices) {
-            if (valid[i] && start < 0) start = i
-            if ((!valid[i] || i == valid.lastIndex) && start >= 0) {
-                val end = if (valid[i]) i else i - 1
-                parts += format(xs[start], xs[end], valid[start], valid[end])
-                start = -1
+        if (TAN.containsMatchIn(e)) constraints += "x ≠ π/2 + kπ（k∈ℤ）"
+        if (COT.containsMatchIn(e)) constraints += "x ≠ kπ（k∈ℤ）"
+
+        LOG.findAll(e).forEach { match ->
+            val inner = match.groupValues[2].trim()
+            if (inner.isNotEmpty() && inner != "x") {
+                constraints += "($inner) > 0"
+            } else {
+                constraints += "x > 0"
             }
         }
-        return parts.joinToString(" ∪ ")
-    }
 
-    private fun format(a: Double, b: Double, closedA: Boolean, closedB: Boolean): String {
-        val left = if (closedA) "[" else "("
-        val right = if (closedB) "]" else ")"
-        return "$left${num(a)}, ${num(b)}$right"
-    }
+        SQRT.findAll(e).forEach { match ->
+            val inner = match.groupValues[2].trim()
+            val isCube = match.groupValues[1] == "∛"
+            if (!isCube && inner.isNotEmpty()) {
+                constraints += if (inner == "x") "x ≥ 0" else "($inner) ≥ 0"
+            }
+        }
 
-    private fun num(value: Double): String {
-        val rounded = String.format("%.2f", value).trimEnd('0').trimEnd('.')
-        return if (rounded == "-0") "0" else rounded
+        if (DIVIDE_X.containsMatchIn(e)) constraints += "x ≠ 0"
+
+        return if (constraints.isEmpty()) "(-∞, +∞)" else constraints.joinToString("；")
     }
 }
