@@ -18,6 +18,9 @@ import java.util.concurrent.TimeUnit
 
 class UpdateManager(private val context: Context) {
 
+    /** 从版本说明里解析出的 SHA-256，下载后用于校验。 */
+    private var expectedSha256: String? = null
+
     private val owner = "CLoneLING"
     private val repo = "FunctionPlotter"
 
@@ -52,6 +55,8 @@ class UpdateManager(private val context: Context) {
                 it.name?.endsWith(".apk", ignoreCase = true) == true
             } ?: return UpdateResult.NoApkFound
             val downloadUrl = apkAsset.browserDownloadUrl ?: return UpdateResult.NoApkFound
+
+            expectedSha256 = extractSha256(release.body ?: "")
 
             UpdateResult.Available(
                 version = latestTag,
@@ -112,6 +117,10 @@ class UpdateManager(private val context: Context) {
                         emit((downloaded * 100 / total).toInt().coerceIn(0, 100))
                     }
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        if (!verifyDownloadedApk()) {
+                            emit(-2)
+                            return@flow
+                        }
                         emit(100)
                         return@flow
                     }
@@ -133,6 +142,36 @@ class UpdateManager(private val context: Context) {
             delay(400)
         }
     }
+
+    /**
+     * 校验下载包的 SHA-256。版本说明里没有写哈希时跳过（兼容旧版本）。
+     */
+    private fun verifyDownloadedApk(): Boolean {
+        val expected = expectedSha256?.lowercase() ?: return true
+        val file = downloadedApkFile()
+        if (!file.exists()) return false
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { input ->
+                val buffer = ByteArray(1 shl 16)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            val actual = digest.digest().joinToString("") { "%02x".format(it) }
+            val ok = actual == expected
+            if (!ok) file.delete()
+            ok
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    private fun extractSha256(text: String): String? =
+        Regex("SHA-?256[^0-9a-fA-F]*([0-9a-fA-F]{64})")
+            .find(text)?.groupValues?.getOrNull(1)
 
     fun installDownloadedApk(): Boolean {
         val apkFile = downloadedApkFile()

@@ -103,6 +103,7 @@ fun UpdateBanner(viewModel: UpdateViewModel, modifier: Modifier = Modifier) {
             Column(Modifier.weight(1f)) {
                 Text(
                     text = when {
+                        current == -2 -> "安装包校验失败，已删除"
                         current < 0 -> "更新下载失败"
                         current >= 100 -> "更新已下载完成，可以安装"
                         else -> "正在下载更新 $current%"
