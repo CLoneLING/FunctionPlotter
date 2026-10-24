@@ -52,7 +52,7 @@ class ApkDownloader(private val context: Context) {
         return try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
-                val body = response.body ?: return null
+                val body = response.peekBody(Long.MAX_VALUE)
                 val total = body.contentLength()
                 var written = 0L
                 body.byteStream().use { input ->
