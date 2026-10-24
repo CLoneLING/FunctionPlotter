@@ -24,8 +24,8 @@ android {
         applicationId = "com.yumoo.functionplotter"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20261030
-        versionName = "1.2.0"
+        versionCode = 20261031
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

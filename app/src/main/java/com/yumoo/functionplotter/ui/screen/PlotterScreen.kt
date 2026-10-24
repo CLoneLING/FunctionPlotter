@@ -1,5 +1,8 @@
 package com.yumoo.functionplotter.ui.screen
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,6 +103,19 @@ fun PlotterScreen(
         }
     }
 
+    // 每次曲线变化做一次淡入，让"按下绘制"有即时反馈
+    val plotKey = functions.joinToString("|") { it.expression }
+    val plotAlpha = remember { Animatable(1f) }
+    val animationsOn = com.yumoo.functionplotter.ui.theme.LocalAnimationsEnabled.current
+    LaunchedEffect(plotKey, animationsOn) {
+        if (animationsOn) {
+            plotAlpha.snapTo(0.45f)
+            plotAlpha.animateTo(1f, tween(durationMillis = 280))
+        } else {
+            plotAlpha.snapTo(1f)
+        }
+    }
+
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showHelp by remember { mutableStateOf(false) }
     var resetToken by remember { mutableIntStateOf(0) }
@@ -183,7 +199,11 @@ fun PlotterScreen(
     }
 
     val canvasPane: @Composable (Boolean) -> Unit = { withIsland ->
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = plotAlpha.value }
+        ) {
             canvasContent(
                 CanvasArgs(
                     withIsland = withIsland,

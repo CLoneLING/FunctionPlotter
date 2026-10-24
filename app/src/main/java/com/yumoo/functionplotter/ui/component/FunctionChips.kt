@@ -1,5 +1,7 @@
 package com.yumoo.functionplotter.ui.component
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -58,6 +60,11 @@ fun FunctionChips(
         items(functions, key = { it.id }) { function ->
             val selected = function.id == selectedId
             val broken = function.id in invalidIds
+            val chipScale by animateFloatAsState(
+                targetValue = if (selected) 1.05f else 1f,
+                animationSpec = tween(160),
+                label = "chipScale"
+            )
             val container by animateColorAsState(
                 targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
@@ -74,6 +81,10 @@ fun FunctionChips(
                         else MaterialTheme.colorScheme.outlineVariant,
                         shape = AtomicShapes.Chip
                     )
+                    .graphicsLayer {
+                        scaleX = chipScale
+                        scaleY = chipScale
+                    }
                     .clickable { onSelect(function.id) }
             ) {
                 Row(
