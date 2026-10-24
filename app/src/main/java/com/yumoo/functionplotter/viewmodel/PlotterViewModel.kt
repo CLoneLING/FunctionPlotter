@@ -128,6 +128,44 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
         _draft.value = ""
     }
 
+    /**
+     * 批量导入：先填空槽，再追加到上限。返回实际导入条数。
+     */
+    fun importExpressions(expressions: List<String>): Int {
+        val queue = ArrayDeque(expressions.map { it.trim() }.filter { it.isNotEmpty() })
+        if (queue.isEmpty()) return 0
+
+        val current = _functions.value.toMutableList()
+        val seen = current.map { it.expression.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+        var added = 0
+
+        for (i in current.indices) {
+            if (queue.isEmpty()) break
+            if (current[i].expression.isBlank()) {
+                val next = queue.removeFirst()
+                if (seen.add(next)) {
+                    current[i] = current[i].copy(expression = next)
+                    added++
+                }
+            }
+        }
+        while (queue.isNotEmpty() && current.size < MAX_FUNCTIONS) {
+            val next = queue.removeFirst()
+            if (!seen.add(next)) continue
+            val used = current.map { it.colorArgb }.toSet()
+            val color = PALETTE.firstOrNull { it !in used } ?: PALETTE[current.size % PALETTE.size]
+            current += PlotFunction(id = nextId++, expression = next, colorArgb = color)
+            added++
+        }
+
+        _functions.value = current
+        current.firstOrNull { it.expression.isNotBlank() }?.let {
+            _selectedId.value = it.id
+            _draft.value = it.expression
+        }
+        return added
+    }
+
     fun selectFunction(id: Long) {
         _selectedId.value = id
         _draft.value = _functions.value.firstOrNull { it.id == id }?.expression ?: ""

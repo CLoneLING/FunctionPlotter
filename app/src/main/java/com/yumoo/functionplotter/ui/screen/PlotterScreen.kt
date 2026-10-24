@@ -1,5 +1,7 @@
 package com.yumoo.functionplotter.ui.screen
 
+import androidx.compose.material.icons.filled.ImportExport
+import com.yumoo.functionplotter.ui.component.ImportDialog
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
@@ -118,6 +120,7 @@ fun PlotterScreen(
 
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showHelp by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
     var resetToken by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) { updateViewModel.autoCheckOnce() }
@@ -148,6 +151,11 @@ fun PlotterScreen(
                 onAdd = viewModel::addFunction,
                 canAdd = functions.size < PlotterViewModel.MAX_FUNCTIONS,
                 modifier = Modifier.weight(1f)
+            )
+            CircleIconButton(
+                icon = Icons.Default.ImportExport,
+                contentDescription = "批量导入",
+                onClick = { showImport = true }
             )
             if (showHelpButton) {
                 CircleTextButton(text = "?", onClick = { showHelp = true })
@@ -310,6 +318,16 @@ fun PlotterScreen(
 
     if (showHelp) {
         SyntaxHelpDialog(onDismiss = { showHelp = false })
+    }
+
+    if (showImport) {
+        ImportDialog(
+            onDismiss = { showImport = false },
+            onImport = { list ->
+                viewModel.importExpressions(list)
+                showImport = false
+            }
+        )
     }
 }
 
