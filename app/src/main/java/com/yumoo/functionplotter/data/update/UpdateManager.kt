@@ -83,6 +83,14 @@ class UpdateManager(private val context: Context) {
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     fun downloadApk(url: String): Long {
+        // 关键：先删掉上一版残留的安装包。
+        // DownloadManager 不会覆盖已存在的目标文件，若不删，
+        // 下载会静默失败，随后安装的就是旧 APK（表现"总是装回旧版本"）。
+        runCatching {
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.let { dir ->
+                File(dir, APK_FILE_NAME).delete()
+            }
+        }
         val request = DownloadManager.Request(Uri.parse(url))
             .setTitle("FunctionPlotter 更新")
             .setDescription("正在下载新版本…")
