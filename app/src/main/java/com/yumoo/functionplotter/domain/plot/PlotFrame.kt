@@ -77,6 +77,11 @@ fun buildPlotFrame(
                     }
                 }
                 is PlotExpression.Implicit -> {
+                    // 只含 x 的方程（如 1/(x-1)=0）只求解，不画曲线，
+                    // 否则会在分母零点处画出无意义的竖线。
+                    if (!function.expression.contains("y")) {
+                        continue
+                    }
                     val prepared = evaluator.prepareImplicit(parsed.expr)
                     if (prepared == null) {
                         invalid.add(function.id)

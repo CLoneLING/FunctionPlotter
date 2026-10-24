@@ -70,7 +70,10 @@ fun solveRoots(
             if (abs(y) < 1e-12) {
                 addRoot(roots, x, step)
             } else if ((previousY > 0) != (y > 0)) {
-                bisect(function, previousX, x, previousY, y)?.let { addRoot(roots, it, step) }
+                bisect(function, previousX, x, previousY, y)?.let { root ->
+                                val value = function.eval(root)
+                                if (value.isFinite() && abs(value) < 1e-3) addRoot(roots, root, step)
+                            }
             }
         }
         previousX = x

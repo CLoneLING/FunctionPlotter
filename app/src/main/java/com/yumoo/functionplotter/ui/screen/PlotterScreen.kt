@@ -247,11 +247,11 @@ fun PlotterScreen(
                     onInvalid = { invalidIds = it }
                 )
             )
-            if (poemText != null) {
+            if (poemText != null && functions.all { it.expression.isBlank() }) {
                 Text(
                     text = poemText.orEmpty(),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(start = 24.dp, end = 24.dp, top = 10.dp),
