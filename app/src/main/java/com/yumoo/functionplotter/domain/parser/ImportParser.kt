@@ -25,6 +25,10 @@ object ImportParser {
         "^(?:[yY]|(?:[fFgGhH]|[a-zA-Z])\\s*\\(\\s*x\\s*\\))\\s*=\\s*"
     )
     private val CJK = Regex("[\\u4e00-\\u9fff]")
+    /** 结尾是运算符，说明是残缺表达式 */
+    private val TRAILING_OP = Regex("[-+*/^×÷=]$")
+    /** 等号前面紧跟运算符，如 "2x+=0" */
+    private val OP_BEFORE_EQ = Regex("[-+*/^×÷]\\s*=")
 
     fun parse(raw: String): Result {
         var skipped = 0
@@ -37,6 +41,11 @@ object ImportParser {
                 skipped++
                 continue
             }
+            // 只有真正能画出来的才导入，避免 "2x+=0" 这类残句混进来
+            if (!isDrawable(cleaned)) {
+                skipped++
+                continue
+            }
             kept += cleaned
         }
         return Result(kept.toList(), skipped)
@@ -45,6 +54,16 @@ object ImportParser {
     /** 只用于预览提示：判断能否导入。 */
     fun isUsable(text: String): Boolean = clean(text).let { it.isNotEmpty() && looksLikeExpression(it) }
 
+
+    /** 用与绘图一致的解析链路验证，避免导入后画不出来。 */
+    private fun isDrawable(expression: String): Boolean {
+        val evaluator = com.yumoo.functionplotter.domain.parser.Exp4jEvaluator()
+        return when (val parsed = parsePlotExpression(expression)) {
+            is PlotExpression.Explicit -> evaluator.prepareExplicit(parsed.expr) != null
+            is PlotExpression.Implicit -> evaluator.prepareImplicit(parsed.expr) != null
+            is PlotExpression.Invalid -> false
+        }
+    }
     private fun split(raw: String): List<String> {
         val text = raw
             .replace('\uFF1D', '=')   // ＝
@@ -123,6 +142,8 @@ object ImportParser {
 
     private fun looksLikeExpression(s: String): Boolean {
         if (s.length > 200) return false
+        if (TRAILING_OP.containsMatchIn(s)) return false
+        if (OP_BEFORE_EQ.containsMatchIn(s)) return false
         if (CJK.containsMatchIn(s)) return false
         if (!s.any { it.isLetterOrDigit() || it in "πxyXY" }) return false
         // 括号配平
