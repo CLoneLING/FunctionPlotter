@@ -30,6 +30,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     /** 界面动效开关（默认开启）。 */
     val animations = dataStore.data.map { it[KEY_ANIMATIONS] ?: true }
 
+    /** 空画布时展示一句诗词（默认关闭）。 */
+    val poemEnabled = dataStore.data.map { it[KEY_POEM] ?: false }
+
     /** 护眼模式：0 关闭 / 1 定时（20:00–次日 7:00）/ 2 常开，默认定时。 */
     val eyeCareMode = dataStore.data.map { it[KEY_EYE_CARE] ?: 1 }
 
@@ -54,6 +57,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setShowKeyTabs(v: Boolean) = dataStore.edit { it[KEY_SHOW_KEY_TABS] = v }
 
     suspend fun setAnimations(v: Boolean) = dataStore.edit { it[KEY_ANIMATIONS] = v }
+    suspend fun setPoemEnabled(v: Boolean) = dataStore.edit { it[KEY_POEM] = v }
     suspend fun setEyeCareMode(v: Int) = dataStore.edit { it[KEY_EYE_CARE] = v }
 
     suspend fun setFunctionsJson(v: String) = dataStore.edit { it[KEY_FUNCTIONS_JSON] = v }
@@ -73,6 +77,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_SHOW_KEY_HINTS = booleanPreferencesKey("show_key_hints")
         private val KEY_SHOW_KEY_TABS = booleanPreferencesKey("show_key_tabs")
         private val KEY_ANIMATIONS = booleanPreferencesKey("animations")
+        private val KEY_POEM = booleanPreferencesKey("poem_enabled")
         private val KEY_EYE_CARE = intPreferencesKey("eye_care_mode")
         private val KEY_FUNCTIONS_JSON = stringPreferencesKey("functions_json")
         private val KEY_SELECTED_ID = longPreferencesKey("selected_function_id")

@@ -104,6 +104,7 @@ fun SettingsScreen(
                     onSelect = viewModel::setEyeCareMode
                 )
                 SwitchRow("界面动效", state.animations, viewModel::setAnimations)
+                SwitchRow("空画布显示诗词", state.poemEnabled, viewModel::setPoemEnabled)
             }
 
             SectionCard("界面模块") {

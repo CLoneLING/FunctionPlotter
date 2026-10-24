@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.ui.screen
 
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.ImportExport
 import com.yumoo.functionplotter.ui.component.ImportDialog
 import androidx.compose.animation.core.Animatable
@@ -53,6 +54,7 @@ import com.yumoo.functionplotter.data.model.PlotFunction
 import com.yumoo.functionplotter.domain.parser.Exp4jEvaluator
 import com.yumoo.functionplotter.domain.parser.ExpressionCheck
 import com.yumoo.functionplotter.domain.parser.checkExpression
+import com.yumoo.functionplotter.ui.component.CalcDialog
 import com.yumoo.functionplotter.ui.component.CanvasIsland
 import com.yumoo.functionplotter.ui.component.ExpressionInput
 import com.yumoo.functionplotter.ui.component.FunctionCanvas
@@ -93,6 +95,12 @@ fun PlotterScreen(
     val showHelpButton by viewModel.showHelpButton.collectAsState(initial = true)
     val showKeyHints by viewModel.showKeyHints.collectAsState(initial = false)
     val showKeyTabs by viewModel.showKeyTabs.collectAsState(initial = false)
+    val poemEnabled by viewModel.poemEnabled.collectAsState(initial = false)
+    var poemText by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(poemEnabled) {
+        poemText = if (poemEnabled) com.yumoo.functionplotter.data.PoemRepository.fetch() else null
+    }
 
     val windowClass = rememberWindowClass()
 
@@ -121,6 +129,7 @@ fun PlotterScreen(
     var invalidIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showHelp by remember { mutableStateOf(false) }
     var showImport by remember { mutableStateOf(false) }
+    var showCalc by remember { mutableStateOf(false) }
     var resetToken by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) { updateViewModel.autoCheckOnce() }
@@ -151,6 +160,11 @@ fun PlotterScreen(
                 onAdd = viewModel::addFunction,
                 canAdd = functions.size < PlotterViewModel.MAX_FUNCTIONS,
                 modifier = Modifier.weight(1f)
+            )
+            CircleIconButton(
+                icon = Icons.Default.Calculate,
+                contentDescription = "函数求值",
+                onClick = { showCalc = true }
             )
             CircleIconButton(
                 icon = Icons.Default.ImportExport,
@@ -223,6 +237,17 @@ fun PlotterScreen(
                     onInvalid = { invalidIds = it }
                 )
             )
+            if (poemText != null && functions.all { it.expression.isBlank() }) {
+                Text(
+                    text = poemText.orEmpty(),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 24.dp, end = 24.dp, bottom = 28.dp)
+                )
+            }
+
             if (withIsland) {
                 CanvasIsland(
                     onResetView = { resetToken++ },
@@ -318,6 +343,13 @@ fun PlotterScreen(
 
     if (showHelp) {
         SyntaxHelpDialog(onDismiss = { showHelp = false })
+    }
+
+    if (showCalc) {
+        CalcDialog(
+            expression = functions.firstOrNull { it.id == selectedId }?.expression ?: "",
+            onDismiss = { showCalc = false }
+        )
     }
 
     if (showImport) {

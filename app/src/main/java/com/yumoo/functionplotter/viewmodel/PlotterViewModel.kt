@@ -38,6 +38,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     val showHelpButton = repository.showHelpButton
     val showKeyHints = repository.showKeyHints
     val showKeyTabs = repository.showKeyTabs
+    val poemEnabled = repository.poemEnabled
 
     init {
         restoreAndObserve()
