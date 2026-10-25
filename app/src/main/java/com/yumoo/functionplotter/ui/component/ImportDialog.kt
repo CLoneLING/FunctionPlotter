@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yumoo.functionplotter.domain.parser.ImportParser
@@ -31,6 +32,7 @@ fun ImportDialog(
     onImport: (List<String>) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val parsed = remember(text) { ImportParser.parse(text) }
 
     AlertDialog(
@@ -44,6 +46,15 @@ fun ImportDialog(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                 )
                 Spacer(Modifier.height(10.dp))
+                TextButton(
+                    onClick = {
+                        val clip = clipboard.getText()?.text?.trim().orEmpty()
+                        if (clip.isNotEmpty()) {
+                            text = if (text.isBlank()) clip else text.trimEnd() + "\n" + clip
+                        }
+                    },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp)
+                ) { Text("从剪贴板粘贴", fontSize = 12.sp) }
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -51,6 +62,10 @@ fun ImportDialog(
                         .fillMaxWidth()
                         .heightIn(min = 96.dp, max = 220.dp),
                     textStyle = MaterialTheme.typography.bodySmall,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = KeyboardType.Ascii,
+                        autoCorrectEnabled = false
+                    ),
                     placeholder = {
                         Text("y = x^2\ny = sin(x)\nx^2 + y^2 = 9", fontSize = 12.sp)
                     }
