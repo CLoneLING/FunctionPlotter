@@ -3,6 +3,8 @@ package com.yumoo.functionplotter.domain.plot
 import androidx.compose.ui.graphics.Path
 import com.yumoo.functionplotter.domain.parser.PreparedFunction
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 private const val MIN_STEP_PX = 0.75f
 private const val MAX_STEP_PX = 8f
@@ -67,7 +69,7 @@ fun buildCurvePath(
             }
             val clamped = screenY.coerceIn(minY, maxY)
             // 说明已经越过渐近线，不要再连过去
-            if (abs(clamped - previousY) > jumpLimit) {
+            if (abs(clamped - previousY) > jumpLimit * 4) {
                 invalidEnd = mid
                 return@repeat
             }
@@ -98,6 +100,20 @@ fun buildCurvePath(
             started = false
         }
 
+        // 极点常常正好落在两个采样点之间：此时两侧的值都还不大，屏幕差值
+        // 不足以触发上面的判断，连起来就是一条竖线。这里对陡峭段做中点探测：
+        // 中点在两端的范围之外发散（或无定义）就说明中间有极点，断开。
+        if (started && abs(rawY - previousRawY) > height * 0.6) {
+            val midScreenX = (previousScreenX + screenX) / 2f
+            val midWorldY = function.eval(viewport.worldX(midScreenX))
+            val midScreenY: Double = if (midWorldY.isFinite()) viewport.screenY(midWorldY).toDouble() else Double.NaN
+            if (isPoleBetween(previousRawY, rawY, midScreenY, height.toDouble())) {
+                // 借此机会把曲线继续逼近到极点，尽量顶到屏幕边缘
+                extendToBoundary(screenX)
+                started = false
+            }
+        }
+
         val screenY = rawY.coerceIn(minY.toDouble(), maxY.toDouble()).toFloat()
         if (!started) {
             path.moveTo(screenX, screenY)
@@ -125,4 +141,17 @@ internal fun isAsymptoteJump(previous: Double, current: Double, limit: Double): 
     val a = previous.coerceIn(-limit, limit)
     val b = current.coerceIn(-limit, limit)
     return abs(b - a) > limit
+}
+
+/**
+ * 判断两个相邻采样点之间是否夹着一个极点：
+ * 把中点也求值一次，如果中点跑到两端区间之外足够远（或直接无定义），
+ * 说明中间有发散点，不能连线。
+ */
+internal fun isPoleBetween(previous: Double, current: Double, mid: Double, limit: Double): Boolean {
+    if (previous.isNaN() || current.isNaN()) return false
+    val top = min(previous, current)
+    val bottom = max(previous, current)
+    if (mid.isNaN()) return true
+    return mid < top - limit || mid > bottom + limit
 }
