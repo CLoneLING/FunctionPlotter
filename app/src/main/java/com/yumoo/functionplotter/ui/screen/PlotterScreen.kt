@@ -1,5 +1,6 @@
 package com.yumoo.functionplotter.ui.screen
 
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.ImportExport
 import com.yumoo.functionplotter.ui.component.ImportDialog
@@ -138,6 +139,7 @@ fun PlotterScreen(
     var showHelp by remember { mutableStateOf(false) }
     var showImport by remember { mutableStateOf(false) }
     var showCalc by remember { mutableStateOf(false) }
+    var showTools by remember { mutableStateOf(false) }
     var resetToken by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) { updateViewModel.autoCheckOnce() }
@@ -169,16 +171,47 @@ fun PlotterScreen(
                 canAdd = functions.size < PlotterViewModel.MAX_FUNCTIONS,
                 modifier = Modifier.weight(1f)
             )
-            CircleIconButton(
-                icon = Icons.Default.Calculate,
-                contentDescription = "函数求值",
-                onClick = { showCalc = true }
-            )
-            CircleIconButton(
-                icon = Icons.Default.ImportExport,
-                contentDescription = "批量导入",
-                onClick = { showImport = true }
-            )
+            val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 400
+            if (compact) {
+                // 窄屏：求值/导入收进「工具」菜单，避免工具栏拥挤
+                Box {
+                    CircleIconButton(
+                        icon = Icons.Default.Build,
+                        contentDescription = "工具",
+                        onClick = { showTools = true }
+                    )
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = showTools,
+                        onDismissRequest = { showTools = false }
+                    ) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("函数求值") },
+                            onClick = {
+                                showTools = false
+                                showCalc = true
+                            }
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("批量导入") },
+                            onClick = {
+                                showTools = false
+                                showImport = true
+                            }
+                        )
+                    }
+                }
+            } else {
+                CircleIconButton(
+                    icon = Icons.Default.Calculate,
+                    contentDescription = "函数求值",
+                    onClick = { showCalc = true }
+                )
+                CircleIconButton(
+                    icon = Icons.Default.ImportExport,
+                    contentDescription = "批量导入",
+                    onClick = { showImport = true }
+                )
+            }
             if (showHelpButton) {
                 CircleTextButton(text = "?", onClick = { showHelp = true })
             }

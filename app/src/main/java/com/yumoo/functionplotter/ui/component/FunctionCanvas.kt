@@ -240,6 +240,30 @@ fun FunctionCanvas(
                     )
                 }
             }
+
+            // 交点与方程根的标记：淡色圆点，不抢曲线
+            val rootMarkerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.65f)
+            val crossMarkerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            Canvas(Modifier.fillMaxSize()) {
+                if (!liveViewport.isUsable) return@Canvas
+                val rootColor = rootMarkerColor
+                val crossColor = crossMarkerColor
+                // 白底 + 彩色心，保证在任何曲线颜色上都看得见
+                fun marker(center: Offset, color: Color) {
+                    drawCircle(Color.White.copy(alpha = 0.9f), radius = 6f, center = center)
+                    drawCircle(color, radius = 3.8f, center = center)
+                }
+                frame.equation?.roots?.forEach { root ->
+                    val sx = liveViewport.screenX(root)
+                    val sy = liveViewport.screenY(0.0)
+                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), rootColor)
+                }
+                frame.intersections.forEach { point ->
+                    val sx = liveViewport.screenX(point.x)
+                    val sy = liveViewport.screenY(point.y)
+                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), crossColor)
+                }
+            }
         }
 
         // 网格 + 坐标轴 + 刻度 + 比例尺：屏幕空间实时绘制

@@ -32,6 +32,7 @@ import com.yumoo.functionplotter.domain.solver.CalcInput
 import com.yumoo.functionplotter.domain.solver.CalcValue
 import com.yumoo.functionplotter.domain.solver.FunctionProbe
 import com.yumoo.functionplotter.domain.solver.FunctionRange
+import kotlin.math.abs
 
 private enum class CalcField { X, Y }
 
@@ -77,11 +78,7 @@ fun CalcDialog(
                     active = active == CalcField.X,
                     onClick = { active = CalcField.X }
                 )
-                Text(
-                    text = yResult,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                ResultRow(text = yResult)
 
                 Spacer(Modifier.height(12.dp))
                 CalcFieldRow(
@@ -90,11 +87,7 @@ fun CalcDialog(
                     active = active == CalcField.Y,
                     onClick = { active = CalcField.Y }
                 )
-                Text(
-                    text = xResult,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                ResultRow(text = xResult)
 
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -134,9 +127,33 @@ private fun evaluateY(expression: String, value: CalcValue?): String {
             when {
                 range == null -> "该区间内无定义"
                 range.unbounded -> "y ∈ (-∞, +∞)"
-                value.from == null || value.to == null ->
-                    "y ∈ [${fmt(range.min)}, ${fmt(range.max)}]（按 ±200 采样）"
-                else -> "y ∈ [${fmt(range.min)}, ${fmt(range.max)}]"
+                else -> {
+                    // 端点开闭：若极值只出现在开区间端点上，则该侧取开
+                    val leftOpen = value.from != null && !value.closedFrom &&
+                        abs((FunctionProbe.evalAt(expression, from) ?: Double.NaN) - range.min) < 1e-6
+                    val rightOpen = value.to != null && !value.closedTo &&
+                        abs((FunctionProbe.evalAt(expression, to) ?: Double.NaN) - range.max) < 1e-6
+                    // 无界端不能一律当 ±∞：用 20 与 200 两档采样比较是否仍在增长
+                    val growsHigh = when {
+                        value.to != null -> false
+                        else -> {
+                            val near = FunctionRange.overInterval(expression, from, minOf(200.0, 20.0), samples = 200)
+                            near != null && kotlin.math.abs(range.max) > kotlin.math.abs(near.max) * 2 + 1e-6
+                        }
+                    }
+                    val growsLow = when {
+                        value.from != null -> false
+                        else -> {
+                            val near = FunctionRange.overInterval(expression, maxOf(-200.0, -20.0), to, samples = 200)
+                            near != null && kotlin.math.abs(range.min) > kotlin.math.abs(near.min) * 2 + 1e-6
+                        }
+                    }
+                    val low = if (value.from == null && growsLow) "-∞" else fmt(range.min)
+                    val high = if (value.to == null && growsHigh) "+∞" else fmt(range.max)
+                    val left = if (leftOpen || value.from == null && false) "(" else "["
+                    val right = if (rightOpen) ")" else "]"
+                    "y ∈ $left$low, $high$right"
+                }
             }
         }
     }
@@ -156,7 +173,11 @@ private fun solveX(expression: String, value: CalcValue?): String {
             val to = value.to ?: 200.0
             val ranges = FunctionRange.solveYRange(expression, from, to)
             if (ranges.isEmpty()) "该区间内无解"
-            else "x ∈ " + ranges.joinToString(" ∪ ") { "[${fmt(it.first)}, ${fmt(it.second)}]" }
+            else "x ∈ " + ranges.joinToString(" ∪ ") {
+                val left = if (abs(it.first) >= 199.9) "(" else "["
+                val right = if (abs(it.second) >= 199.9) ")" else "]"
+                "$left${fmt(it.first)}, ${fmt(it.second)}$right"
+            }
         }
     }
 }
@@ -242,6 +263,35 @@ private fun CalcKeypad(
                     .weight(1f)
                     .height(38.dp)
             ) { Text("清空", fontSize = 13.sp) }
+        }
+    }
+}
+
+@Composable
+private fun ResultRow(text: String) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            modifier = Modifier.weight(1f)
+        )
+        if (text.isNotBlank() && !text.startsWith("请") && !text.startsWith("该")) {
+            Text(
+                text = "复制",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clickable {
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
+                    }
+            )
         }
     }
 }
