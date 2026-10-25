@@ -41,7 +41,7 @@ fun ImportDialog(
         text = {
             Column {
                 Text(
-                    "粘贴任意整段文本，自动挑出其中的表达式（支持 y=、f(x)=、方程、LaTeX 写法与序号列表）。",
+                    "粘贴任意整段文本，自动挑出其中的表达式\n支持 y=、f(x)=、方程、LaTeX 写法与序号列表",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                 )

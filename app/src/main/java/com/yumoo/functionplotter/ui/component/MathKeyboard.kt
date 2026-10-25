@@ -383,10 +383,10 @@ private fun LogBaseDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
         title = { Text("选择对数的底数") },
         text = {
             Column(horizontalAlignment = Alignment.Start) {
-                Text("对数 logₐ(b) 表示「a 的几次方等于 b」。")
-                Text("例如 log₂(8) = 3，因为 2³ = 8。")
+                Text("对数 logₐ(b) 表示「a 的几次方等于 b」")
+                Text("例如 log₂(8) = 3，因为 2³ = 8")
                 Text(
-                    text = "自定义底数：选「自定义」后输入 log(3, 8)，表示以 3 为底的 8 的对数。",
+                    text = "自定义底数：选「自定义」后输入 log(3, 8)，表示以 3 为底的 8 的对数",
                     fontSize = 12.sp
                 )
             }

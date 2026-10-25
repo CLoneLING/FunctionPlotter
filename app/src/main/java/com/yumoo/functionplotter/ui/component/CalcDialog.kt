@@ -89,12 +89,6 @@ fun CalcDialog(
                 )
                 ResultRow(text = xResult)
 
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "支持 3/4、3π、π/2；区间写 [1,3]、(0,∞)",
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
 
                 Spacer(Modifier.height(10.dp))
                 CalcKeypad(

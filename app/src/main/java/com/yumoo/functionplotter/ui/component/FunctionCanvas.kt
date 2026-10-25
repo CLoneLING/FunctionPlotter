@@ -199,6 +199,8 @@ fun FunctionCanvas(
     val liveCenterY = camera.y +
         (((height / 2f) * (liveZoom - 1f) + livePan.y) / liveScale)
     val liveViewport = PlotViewport(liveCenterX, liveCenterY, liveScale, width, height)
+    // 曲线路径用的坐标系（帧视口）：标记点与曲线同层同坐标
+    val frameViewport = PlotViewport(camera.x, camera.y, camera.scale, width, height)
 
     val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
     val axisColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
@@ -241,32 +243,31 @@ fun FunctionCanvas(
                 }
             }
 
-            // 交点与方程根的标记：淡色圆点，不抢曲线
-            val rootMarkerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.65f)
-            val crossMarkerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            // 交点与方程根的标记：与曲线同处一层、用同一套坐标，
+            // 拖动/缩放时由 GPU 一起变换，不会跑到线外
+            val rootMarkerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+            val crossMarkerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
             val markerDensity = androidx.compose.ui.platform.LocalDensity.current
-            val markerOuter = with(markerDensity) { 10.dp.toPx() }
-            val markerInner = with(markerDensity) { 6.dp.toPx() }
+            val markerOuter = with(markerDensity) { 7.dp.toPx() }
+            val markerInner = with(markerDensity) { 3.5.dp.toPx() }
             Canvas(Modifier.fillMaxSize()) {
-                if (!liveViewport.isUsable) return@Canvas
-                val rootColor = rootMarkerColor
-                val crossColor = crossMarkerColor
-                // 白底 + 彩色心，保证在任何曲线颜色上都看得见
+                if (!frameViewport.isUsable) return@Canvas
                 fun marker(center: Offset, color: Color) {
                     drawCircle(Color.White.copy(alpha = 0.95f), radius = markerOuter, center = center)
                     drawCircle(color, radius = markerInner, center = center)
                 }
                 frame.equation?.roots?.forEach { root ->
-                    val sx = liveViewport.screenX(root)
-                    val sy = liveViewport.screenY(0.0)
-                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), rootColor)
+                    val sx = frameViewport.screenX(root)
+                    val sy = frameViewport.screenY(0.0)
+                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), rootMarkerColor)
                 }
                 frame.intersections.forEach { point ->
-                    val sx = liveViewport.screenX(point.x)
-                    val sy = liveViewport.screenY(point.y)
-                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), crossColor)
+                    val sx = frameViewport.screenX(point.x)
+                    val sy = frameViewport.screenY(point.y)
+                    if (sx.isFinite() && sy.isFinite()) marker(Offset(sx, sy), crossMarkerColor)
                 }
             }
+
         }
 
         // 网格 + 坐标轴 + 刻度 + 比例尺：屏幕空间实时绘制
@@ -277,6 +278,8 @@ fun FunctionCanvas(
             if (showAxisLabels) drawTickLabels(liveViewport, textMeasurer, tickStyle)
             drawScaleBar(liveViewport, textMeasurer, tickStyle, axisColor)
         }
+
+
 
         // 点按读数：能写成 π 的有理倍数时，同时给出 π 形式与小数形式
         tapInfo?.let { info ->
@@ -475,14 +478,14 @@ private fun EquationDialog(
                     Text("交点${index + 1}：(${fmtXY(point.x)}, ${fmtXY(point.y)})")
                 }
                 if ((info?.roots ?: emptyList()).isEmpty()) {
-                    Text("当前可视范围内没有实根。")
+                    Text("当前可视范围内没有实根")
                 } else {
                     (info?.roots ?: emptyList()).forEachIndexed { index, value ->
                         Text("x${subscript(index + 1)} = ${formatRoot(value)}")
                     }
                     if (info?.truncated == true) {
                         Text(
-                            text = "根较多，仅显示前 ${info.roots.size} 个。放大后再看可减少数量。",
+                            text = "根较多，仅显示前 ${info.roots.size} 个，放大后再看可减少数量",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(top = 8.dp)

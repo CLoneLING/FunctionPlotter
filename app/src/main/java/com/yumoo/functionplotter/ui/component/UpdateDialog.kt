@@ -37,7 +37,7 @@ fun UpdateDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 MarkdownText(
-                    markdown = info.notes.ifBlank { "本次更新暂无说明。" },
+                    markdown = info.notes.ifBlank { "本次更新暂无说明" },
                     baseStyle = MaterialTheme.typography.bodySmall
                 )
             }

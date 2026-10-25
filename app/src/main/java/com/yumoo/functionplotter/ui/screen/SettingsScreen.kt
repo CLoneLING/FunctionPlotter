@@ -102,7 +102,7 @@ fun SettingsScreen(
                 SwitchRow("显示刻度标签", state.showAxisLabels, viewModel::setShowAxisLabels)
                 ChoiceRow(
                     label = "护眼模式（仅浅色）",
-                    options = listOf("关闭" to 0, "定时 20–7点" to 1, "常开" to 2),
+                    options = listOf("关闭" to 0, "定时" to 1, "常开" to 2),
                     selected = state.eyeCareMode,
                     onSelect = viewModel::setEyeCareMode
                 )
@@ -126,7 +126,7 @@ fun SettingsScreen(
 
             SectionCard("界面模块") {
                 Text(
-                    text = "隐藏后相邻模块会自动补齐空间。",
+                    text = "隐藏后相邻模块会自动补齐空间",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -175,7 +175,7 @@ fun SettingsScreen(
 
             SectionCard("赞助与支持") {
                 Text(
-                    "如果这个工具帮到了你，可以请我喝杯咖啡。",
+                    "如果这个工具帮到了你，可以请我喝杯咖啡吗 (ゝω・´★)",
                     fontSize = 13.sp
                 )
                 Button(
@@ -186,8 +186,8 @@ fun SettingsScreen(
                     Text("前往爱发电支持")
                 }
                 Text(
-                    "本应用对所有用户免费开放，赞助不附带任何功能或特权。\n" +
-                        "未成年人请在监护人知情并同意的前提下再考虑支持。",
+                    "本应用对所有用户免费开放，赞助不附带任何功能或特权\n" +
+                        "未成年人请在监护人知情并同意的前提下再考虑支持",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -249,10 +249,10 @@ private val ABOUT_MARKDOWN = """
     - 点按读数支持 π 形式
 
     ### 用户协议
-    本应用按「现状」提供，用于学习与日常绘图，不对计算结果的准确性作保证。
+    本应用按「现状」提供，用于学习与日常绘图，不对计算结果的准确性作保证
 
     ### 隐私说明
-    不收集、不上传任何个人数据；表达式与设置只保存在本机，仅在检查更新时访问 GitHub 公开接口。
+    不收集、不上传任何个人数据；表达式与设置只保存在本机，仅在检查更新时访问 GitHub 公开接口
 
     ### 鸣谢
     - API：一言（hitokoto.cn）、GitHub Releases
