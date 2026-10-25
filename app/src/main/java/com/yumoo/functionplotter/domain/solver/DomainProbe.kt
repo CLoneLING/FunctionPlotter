@@ -44,10 +44,10 @@ object DomainProbe {
 
         // 3) tan / cot 周期排斥
         TAN_ARG.find(e)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }?.let { arg ->
-            parts += if (arg == "x") "x ≠ π/2 + kπ（k∈ℤ）" else "$arg ≠ π/2 + kπ（k∈ℤ）"
+            parts += periodicConstraint(arg, Math.PI / 2)
         }
         COT_ARG.find(e)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }?.let { arg ->
-            parts += if (arg == "x") "x ≠ kπ（k∈ℤ）" else "$arg ≠ kπ（k∈ℤ）"
+            parts += periodicConstraint(arg, 0.0)
         }
 
         return if (parts.isEmpty()) "(-∞, +∞)" else parts.joinToString("；")
@@ -80,6 +80,41 @@ object DomainProbe {
         return out
     }
 
+    /**
+     * tan/cot 的周期排斥。
+     *  - 参数是 x：直接给符号式
+     *  - 参数是 a*x：给 (π/2 + kπ)/a
+     *  - 参数非线性（如 x^2）：按 k 取值解出前几个具体点
+     */
+    private fun periodicConstraint(arg: String, offset: Double): String {
+        val suffix = if (offset == 0.0) "kπ（k∈ℤ）" else "π/2 + kπ（k∈ℤ）"
+        if (arg == "x") return "x ≠ $suffix"
+
+        val linear = Regex("^([-+]?[0-9]*\\.?[0-9]+)\\s*\\*?\\s*x$").find(arg)
+        val coefficient = linear?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+        if (coefficient != null && coefficient != 0.0) {
+            return if (coefficient == 1.0) "x ≠ $suffix"
+            else "x ≠ ($suffix) / ${trimNumber(coefficient)}"
+        }
+
+        val points = ArrayList<Double>()
+        for (k in -3..3) {
+            points += FunctionProbe.solveX(arg, offset + k * Math.PI, from = -50.0, to = 50.0, maxRoots = 4)
+        }
+        val sorted = points.filter { it.isFinite() }
+            .distinctBy { Math.round(it * 1e4) }
+            .sorted()
+        return if (sorted.isEmpty()) {
+            "$arg ≠ $suffix"
+        } else {
+            "x ≠ " + sorted.take(8).joinToString(", ") { num(it) } + " …（k∈ℤ）"
+        }
+    }
+
+    private fun trimNumber(value: Double): String {
+        val text = String.format("%.3f", value).trimEnd('0').trimEnd('.')
+        return if (text == "-0") "0" else text
+    }
     private fun roots(sub: String): List<Double> {
         val samples = 4000
         val found = ArrayList<Double>()

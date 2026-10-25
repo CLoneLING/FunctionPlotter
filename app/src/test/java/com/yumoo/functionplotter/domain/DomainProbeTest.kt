@@ -44,4 +44,17 @@ class DomainProbeTest {
         val text = describe("tan(x)")
         assertTrue("实际: $text", text.contains("π/2"))
     }
+
+    @Test
+    fun tangentWithLinearArgumentDividesPeriod() {
+        val text = describe("tan(2x)")
+        assertTrue("实际: $text", text.contains("/ 2"))
+    }
+
+    @Test
+    fun tangentWithNonLinearArgumentListsPoints() {
+        val text = describe("tan(x^2)")
+        assertTrue("实际: $text", text.contains("x ≠"))
+        assertTrue("应给出具体数值: $text", text.any { it.isDigit() })
+    }
 }
