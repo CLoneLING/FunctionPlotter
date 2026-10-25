@@ -9,8 +9,8 @@ import kotlin.math.abs
  */
 object DomainProbe {
 
-    private const val FROM = -1000.0
-    private const val TO = 1000.0
+    private const val FROM = -10000.0
+    private const val TO = 10000.0
 
     private val LOG_ARG = Regex("(?:log10|log|ln|lg)\\s*\\(([^()]*)\\)")
     private val SQRT_ARG = Regex("(?:sqrt|√)\\s*\\(([^()]*)\\)")

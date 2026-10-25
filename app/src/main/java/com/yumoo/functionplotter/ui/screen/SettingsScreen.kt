@@ -62,6 +62,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // 大屏上限宽 720dp 居中，避免通栏长句
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val sideInset = (((screenWidth - 720).coerceAtLeast(0)) / 2).dp
 
     Scaffold(
         topBar = {
@@ -80,7 +83,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(horizontal = 16.dp + sideInset, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             UpdateBanner(viewModel = updateViewModel)
