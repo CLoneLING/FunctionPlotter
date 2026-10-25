@@ -13,7 +13,9 @@ sealed interface CalcValue {
         val from: Double?,          // null = -∞
         val to: Double?,            // null = +∞
         val closedFrom: Boolean,
-        val closedTo: Boolean
+        val closedTo: Boolean,
+        /** 用户把左右端点写反了，已自动交换 */
+        val swapped: Boolean = false
     ) : CalcValue {
         val isBounded: Boolean get() = from != null && to != null
     }
@@ -38,12 +40,14 @@ object CalcInput {
                 val to = parseNumber(rightText)
                 // 至少一端可解析，且不出现 [∞, -∞] 这种明显错误
                 if (from != null || to != null) {
-                    if (from != null && to != null && from > to) return null
+                    val reversed = from != null && to != null && from > to
+                    // 端点写反时自动交换，并保持括号的开闭跟着端点走
                     return CalcValue.Interval(
-                        from = from,
-                        to = to,
-                        closedFrom = first == '[',
-                        closedTo = text.last() == ']'
+                        from = if (reversed) to else from,
+                        to = if (reversed) from else to,
+                        closedFrom = if (reversed) text.last() == ']' else first == '[',
+                        closedTo = if (reversed) first == '[' else text.last() == ']',
+                        swapped = reversed
                     )
                 }
                 return null

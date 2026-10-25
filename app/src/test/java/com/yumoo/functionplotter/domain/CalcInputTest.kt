@@ -46,8 +46,11 @@ class CalcInputTest {
     }
 
     @Test
-    fun rejectsReversedInterval() {
-        assertNull(CalcInput.parse("[3,1]"))
+    fun swapsReversedInterval() {
+        val value = interval("[3,1]")!!
+        assertEquals(1.0, value.from!!, 1e-9)
+        assertEquals(3.0, value.to!!, 1e-9)
+        assertTrue(value.swapped)
     }
 
     @Test

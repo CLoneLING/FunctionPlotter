@@ -146,7 +146,7 @@ private fun evaluateY(expression: String, value: CalcValue?): String {
                     val high = if (value.to == null && growsHigh) "+∞" else fmt(range.max)
                     val left = if (leftOpen || value.from == null && false) "(" else "["
                     val right = if (rightOpen) ")" else "]"
-                    "y ∈ $left$low, $high$right"
+                    "y ∈ $left$low, $high$right" + if (value.swapped) "（端点已交换）" else ""
                 }
             }
         }
