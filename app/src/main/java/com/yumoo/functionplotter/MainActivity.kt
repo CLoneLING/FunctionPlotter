@@ -3,18 +3,15 @@ package com.yumoo.functionplotter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.yumoo.functionplotter.ui.navigation.AppNav
 import com.yumoo.functionplotter.ui.theme.FunctionPlotterTheme
 import com.yumoo.functionplotter.ui.theme.LocalAnimationsEnabled
@@ -25,36 +22,60 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        applyOrientationPolicy(resources.configuration)
+        // 非标准运行环境（鸿蒙卓易通、部分定制 ROM）对 edge-to-edge、
+        // 强制方向支持不完整，失败就退回普通窗口，不能让启动流程中断
+        runCatching { enableEdgeToEdge() }
+        runCatching { applyOrientationPolicy(resources.configuration) }
 
         val repository = (application as FunctionPlotterApp).settingsRepository
 
-        setContent {
-            val themeMode by repository.themeMode.collectAsState(initial = 0)
-            val darkTheme = when (themeMode) {
-                1 -> false
-                2 -> true
-                else -> isSystemInDarkTheme()
-            }
-            val animations by repository.animations.collectAsState(initial = true)
-            val eyeCareMode by repository.eyeCareMode.collectAsState(initial = 1)
-            val startHour by repository.eyeCareStart.collectAsState(initial = 20)
-            val endHour by repository.eyeCareEnd.collectAsState(initial = 7)
-            val warm = !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now(), startHour, endHour)
+        try {
+            setContent {
+                val themeMode by repository.themeMode.collectAsState(initial = 0)
+                val darkTheme = when (themeMode) {
+                    1 -> false
+                    2 -> true
+                    else -> isSystemInDarkTheme()
+                }
+                val animations by repository.animations.collectAsState(initial = true)
+                val eyeCareMode by repository.eyeCareMode.collectAsState(initial = 1)
+                val startHour by repository.eyeCareStart.collectAsState(initial = 20)
+                val endHour by repository.eyeCareEnd.collectAsState(initial = 7)
+                val warm = runCatching {
+                    !darkTheme && eyeCareActive(eyeCareMode, LocalTime.now(), startHour, endHour)
+                }.getOrDefault(false)
 
-            CompositionLocalProvider(LocalAnimationsEnabled provides animations) {
-                FunctionPlotterTheme(darkTheme = darkTheme, warm = warm) {
-                    AppNav()
+                CompositionLocalProvider(LocalAnimationsEnabled provides animations) {
+                    FunctionPlotterTheme(darkTheme = darkTheme, warm = warm) {
+                        AppNav()
+                    }
                 }
             }
+        } catch (t: Throwable) {
+            // 首屏组合就失败：记日志 + 给一个能读懂的提示，而不是闪退
+            runCatching { CrashLog.write(t) }
+            showStartupFailure(t)
+        }
+    }
+
+    private fun showStartupFailure(error: Throwable) {
+        runCatching {
+            val view = TextView(this).apply {
+                text = "当前运行环境启动失败\n" +
+                    "日志：Android/data/com.yumoo.functionplotter/files/crash-*.txt\n\n" +
+                    (error.message ?: error.javaClass.simpleName)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setPadding(48, 160, 48, 48)
+            }
+            setContentView(view)
         }
     }
 
     /** 折叠/展开、旋转都会回到这里，重新决定是否锁竖屏。 */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        applyOrientationPolicy(newConfig)
+        runCatching { applyOrientationPolicy(newConfig) }
     }
 
     private fun applyOrientationPolicy(configuration: Configuration) {
@@ -67,10 +88,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** 护眼模式的暖色覆盖层。 */
-private val EyeCareTint = Color(0x16FF8A2B)
-
-/** 0 关闭 / 1 定时 20:00–次日 7:00 / 2 常开。 */
+/** 0 关闭 / 1 定时 / 2 常开 */
 private fun eyeCareActive(mode: Int, now: LocalTime, startHour: Int, endHour: Int): Boolean = when (mode) {
     2 -> true
     1 -> if (startHour <= endHour) {

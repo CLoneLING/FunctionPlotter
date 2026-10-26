@@ -52,7 +52,9 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
             val savedDraft = repository.draftExpression.first()
 
             // 2. 恢复内存状态
-            val restored = parseSaved(savedJson) ?: defaultFunctions()
+            // 空列表也要兜底：否则下面的 .first() 会抛 NoSuchElementException，
+            // 表现为"一进应用就闪退"（本地快照为 [] 时必现）
+            val restored = parseSaved(savedJson)?.takeIf { it.isNotEmpty() } ?: defaultFunctions()
             _functions.value = restored
             val restoredSelection = restored.firstOrNull { it.id == savedId } ?: restored.first()
             _selectedId.value = restoredSelection.id

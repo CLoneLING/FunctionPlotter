@@ -2,14 +2,16 @@ package com.yumoo.functionplotter.ui.util
 
 import android.app.Activity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
-import androidx.window.layout.WindowLayoutInfo
 
 /**
  * 设备窗口形态。
@@ -37,16 +39,36 @@ fun rememberWindowClass(): WindowClass {
 
 /**
  * 当前折叠状态。真折叠屏返回 [FoldingFeature]；平板返回 null。
- * 用 WindowManager 官方接口，避免按分辨率猜铰链位置。
+ *
+ * 注意：这里必须"绝对不起火"。部分非标准 Android 运行环境
+ * （如鸿蒙通过卓易通运行、深度定制的 ROM、部分模拟器）没有实现
+ * androidx.window 依赖的窗口扩展服务，调 [WindowInfoTracker] 会抛
+ * 异常甚至 Error（NoClassDefFoundError）。这个函数在首帧组合时就会执行，
+ * 一旦抛出没人接就是启动即闪退，所以整体 try/catch，失败即降级成非折叠屏。
  */
 @Composable
 fun rememberFoldingFeature(): FoldingFeature? {
     val context = LocalContext.current
     val activity = context as? Activity ?: return null
-    val tracker = WindowInfoTracker.getOrCreate(context)
-    val info: WindowLayoutInfo by tracker.windowLayoutInfo(activity)
-        .collectAsState(initial = WindowLayoutInfo(emptyList()))
-    return info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+    var feature by remember { mutableStateOf<FoldingFeature?>(null) }
+
+    LaunchedEffect(activity) {
+        try {
+            WindowInfoTracker.getOrCreate(context)
+                .windowLayoutInfo(activity)
+                .collect { info ->
+                    feature = try {
+                        info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                    } catch (t: Throwable) {
+                        null
+                    }
+                }
+        } catch (t: Throwable) {
+            // 服务缺失：当作普通大屏处理，不做铰链分栏
+            feature = null
+        }
+    }
+    return feature
 }
 
 /** 平板/折叠屏展开态的判定阈值。 */
