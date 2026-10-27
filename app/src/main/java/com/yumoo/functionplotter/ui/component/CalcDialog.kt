@@ -32,6 +32,7 @@ import com.yumoo.functionplotter.domain.solver.CalcInput
 import com.yumoo.functionplotter.domain.solver.CalcValue
 import com.yumoo.functionplotter.domain.solver.FunctionProbe
 import com.yumoo.functionplotter.domain.solver.FunctionRange
+import kotlin.math.PI
 import kotlin.math.abs
 
 private enum class CalcField { X, Y }
@@ -166,11 +167,27 @@ private fun solveX(expression: String, value: CalcValue?): String {
             val from = value.from ?: -200.0
             val to = value.to ?: 200.0
             val ranges = FunctionRange.solveYRange(expression, from, to)
-            if (ranges.isEmpty()) "该区间内无解"
-            else "x ∈ " + ranges.joinToString(" ∪ ") {
-                val left = if (abs(it.first) >= 199.9) "(" else "["
-                val right = if (abs(it.second) >= 199.9) ")" else "]"
-                "$left${fmt(it.first)}, ${fmt(it.second)}$right"
+            if (ranges.isEmpty()) {
+                "该区间内无解"
+            } else {
+                val period = detectPeriod(ranges)
+                if (period != null) {
+                    // 周期函数：几十上百段全列出来没法看，压成「基础区间 + k·T」
+                    val base = ranges[ranges.size / 2]
+                    val symbol = periodSymbol(period)
+                    val step = if (symbol != null) "k·$symbol" else "k·${fmt(period)}"
+                    val samples = ranges.drop(1).take(2).joinToString("   ") {
+                        "[${fmt(it.first)}, ${fmt(it.second)}]"
+                    }
+                    "x ∈ [${fmt(base.first)}, ${fmt(base.second)}] + $step（k ∈ ℤ）\n" +
+                        "共 ${ranges.size} 段，例如 $samples"
+                } else {
+                    "x ∈ " + ranges.joinToString(" ∪ ") {
+                        val left = if (abs(it.first) >= 199.9) "(" else "["
+                        val right = if (abs(it.second) >= 199.9) ")" else "]"
+                        "$left${fmt(it.first)}, ${fmt(it.second)}$right"
+                    }
+                }
             }
         }
     }
@@ -294,4 +311,33 @@ private fun fmt(value: Double): String {
     if (value.isNaN() || value.isInfinite()) return "—"
     val rounded = String.format("%.4f", value).trimEnd('0').trimEnd('.')
     return if (rounded == "-0") "0" else rounded
+}
+
+/** 相邻区间起点是否等间距且长度一致；是则返回周期，否则 null。 */
+private fun detectPeriod(ranges: List<Pair<Double, Double>>): Double? {
+    if (ranges.size < 6) return null
+    // 跳过首尾（可能被 ±200 的扫描边界截断）
+    val inner = ranges.subList(1, ranges.size - 1)
+    if (inner.size < 4) return null
+    val gaps = inner.zipWithNext { a, b -> b.first - a.first }
+    val widths = inner.map { it.second - it.first }
+    val gAvg = gaps.average()
+    val wAvg = widths.average()
+    if (gAvg <= 1e-6) return null
+    val gUniform = gaps.all { abs(it - gAvg) < 1e-3 * maxOf(1.0, abs(gAvg)) }
+    val wUniform = widths.all { abs(it - wAvg) < 1e-3 * maxOf(1.0, abs(wAvg)) }
+    return if (gUniform && wUniform) gAvg else null
+}
+
+/** 把常见周期写成 π 的形式。 */
+private fun periodSymbol(period: Double): String? {
+    val candidates = listOf(
+        2 * PI to "2\u03c0",
+        PI to "\u03c0",
+        PI / 2 to "\u03c0/2",
+        PI / 3 to "\u03c0/3",
+        PI / 4 to "\u03c0/4",
+        PI / 6 to "\u03c0/6"
+    )
+    return candidates.firstOrNull { (value, _) -> abs(period - value) < 2e-3 }?.second
 }
