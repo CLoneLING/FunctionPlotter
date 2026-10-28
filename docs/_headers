@@ -4,7 +4,10 @@
   X-Robots-Tag: noindex
 
 /style.css
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=0, must-revalidate
+
+/release.json
+  Cache-Control: no-store, max-age=0
 
 /
-  Cache-Control: public, max-age=600
+  Cache-Control: public, max-age=0, must-revalidate
