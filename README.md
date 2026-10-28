@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
 
-当前版本：**1.6.3**（versionCode 20261045）
+当前版本：**1.6.4**（versionCode 20261046）
 
 **官网 / 下载页：** <https://functionplotter.dpdns.org>
 **演示视频：** [B 站](https://www.bilibili.com/video/BV1gLxu65EKe) · [作者空间](https://space.bilibili.com/1065292222) · 作者 QQ：926087878
