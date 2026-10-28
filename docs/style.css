@@ -612,3 +612,12 @@ main{position:relative;z-index:1}
   html{scroll-behavior:auto}
   .op{display:none}
 }
+
+/* 图片不可拖拽 / 不可右键另存（配合 worker 的防盗链） */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

@@ -1,5 +1,7 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+  Content-Disposition: inline
+  X-Robots-Tag: noindex
 
 /style.css
   Cache-Control: public, max-age=3600

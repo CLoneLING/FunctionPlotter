@@ -28,7 +28,7 @@
 
 <header class="nav">
   <a class="brand" href="/">
-    <img class="brand-icon" src="/assets/icon-192.png" width="32" height="32" alt="FunctionPlotter 图标">
+    <img draggable="false" class="brand-icon" src="/assets/icon-192.png" width="32" height="32" alt="FunctionPlotter 图标">
     <span class="brand-name">FunctionPlotter</span>
   </a>
   <nav class="nav-links">
@@ -63,7 +63,7 @@
         <span class="sheet sheet-2"></span>
       </div>
       <figure class="hero-shot glass">
-        <img src="/assets/cake.webp" width="540" height="1200" alt="FunctionPlotter 用九条方程画出生日蛋糕">
+        <img draggable="false" src="/assets/cake.webp" width="540" height="1200" alt="FunctionPlotter 用九条方程画出生日蛋糕">
       </figure>
     </div>
   </section>
@@ -105,23 +105,23 @@
     <div class="deck-wrap" data-deck="phone">
       <div class="deck" id="phone-deck">
         <figure class="deck-item glass" data-theme="light">
-          <img src="/assets/light.webp" width="540" height="1200" alt="浅色主题下的 sin(x) 曲线">
+          <img draggable="false" src="/assets/light.webp" width="540" height="1200" alt="浅色主题下的 sin(x) 曲线">
           <figcaption>浅色主题</figcaption>
         </figure>
         <figure class="deck-item glass" data-theme="dark">
-          <img src="/assets/calc.webp" width="540" height="1200" alt="区间求值：x 在 1 到 3 之间时 y 的取值范围">
+          <img draggable="false" src="/assets/calc.webp" width="540" height="1200" alt="区间求值：x 在 1 到 3 之间时 y 的取值范围">
           <figcaption>区间求值</figcaption>
         </figure>
         <figure class="deck-item glass" data-theme="dark">
-          <img src="/assets/inter.webp" width="540" height="1200" alt="两条曲线与自动标出的交点">
+          <img draggable="false" src="/assets/inter.webp" width="540" height="1200" alt="两条曲线与自动标出的交点">
           <figcaption>交点自动标出</figcaption>
         </figure>
         <figure class="deck-item glass" data-theme="dark">
-          <img src="/assets/import.webp" width="540" height="1200" alt="批量导入：一次识别九条方程">
+          <img draggable="false" src="/assets/import.webp" width="540" height="1200" alt="批量导入：一次识别九条方程">
           <figcaption>九条方程一次导入</figcaption>
         </figure>
         <figure class="deck-item glass" data-theme="dark">
-          <img src="/assets/cake.webp" width="540" height="1200" alt="九条方程叠加出的生日蛋糕">
+          <img draggable="false" src="/assets/cake.webp" width="540" height="1200" alt="九条方程叠加出的生日蛋糕">
           <figcaption>九条方程 = 一个蛋糕</figcaption>
         </figure>
       </div>
@@ -150,15 +150,15 @@
       </div>
       <div class="drum" id="drum">
         <figure class="drum-item glass is-on" data-i="0">
-          <img src="/assets/tablet-light.webp" width="1200" height="1000" alt="平板浅色主题下的双栏布局">
+          <img draggable="false" src="/assets/tablet-light.webp" width="1200" height="1000" alt="平板浅色主题下的双栏布局">
           <figcaption>浅色</figcaption>
         </figure>
         <figure class="drum-item glass" data-i="1">
-          <img src="/assets/tablet-dark.webp" width="1200" height="1000" alt="平板深色主题下的双栏布局">
+          <img draggable="false" src="/assets/tablet-dark.webp" width="1200" height="1000" alt="平板深色主题下的双栏布局">
           <figcaption>深色</figcaption>
         </figure>
         <figure class="drum-item glass" data-i="2">
-          <img src="/assets/tablet-warm.webp" width="1200" height="1000" alt="平板夜间暖色下的双栏布局">
+          <img draggable="false" src="/assets/tablet-warm.webp" width="1200" height="1000" alt="平板夜间暖色下的双栏布局">
           <figcaption>夜间暖色</figcaption>
         </figure>
       </div>
@@ -169,7 +169,7 @@
     <h2>看看它怎么用</h2>
     <a class="video-card glass" href="https://www.bilibili.com/video/BV1gLxu65EKe" target="_blank" rel="noopener">
       <span class="video-thumb">
-        <img src="/assets/video-thumb.webp" width="640" height="360" alt="演示视频封面：输入方程直接给出所有根">
+        <img draggable="false" src="/assets/video-thumb.webp" width="640" height="360" alt="演示视频封面：输入方程直接给出所有根">
         <span class="video-play" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </span>
@@ -411,7 +411,15 @@
     if (qqNumber) qqNumber.textContent = QQ;
     if (qqChat) qqChat.href = 'https://wpa.qq.com/msgrd?v=3&uin=' + QQ + '&site=qq&menu=yes';
 
-    var btn = document.getElementById('copy-qq');
+    // 图片不提供右键另存 / 拖拽
+    document.addEventListener(''contextmenu'', function (e) {
+      if (e.target && e.target.tagName === ''IMG'') e.preventDefault();
+    }, { passive: false });
+    document.addEventListener(''dragstart'', function (e) {
+      if (e.target && e.target.tagName === ''IMG'') e.preventDefault();
+    });
+
+    var btn = document.getElementById(''copy-qq'');
     var toast = document.getElementById('toast');
     var t = null;
     function showToast(text) {
