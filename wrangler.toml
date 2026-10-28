@@ -1,0 +1,11 @@
+# Cloudflare Workers 静态站点配置
+# 供「Workers & Pages → Create → 连接 Git」流程使用：部署命令 `npx wrangler deploy`
+# 站点文件在 docs/，这里把 docs/ 直接作为静态资源上传。
+# 如果后续改用 Cloudflare Pages（Pages → Connect to Git），本文件可忽略。
+
+name = "functionplotter"
+compatibility_date = "2025-10-01"
+
+[assets]
+directory = "./docs"
+not_found_handling = "404-page"
