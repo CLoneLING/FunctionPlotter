@@ -91,6 +91,7 @@ fun PlotterScreen(
     val functions by viewModel.functions.collectAsState()
     val selectedId by viewModel.selectedId.collectAsState()
     val draft by viewModel.draft.collectAsState()
+    val caret by viewModel.caret.collectAsState()
     val showGrid by viewModel.showGrid.collectAsState(initial = true)
     val showAxisLabels by viewModel.showAxisLabels.collectAsState(initial = true)
     val sampleStep by viewModel.sampleStep.collectAsState(initial = 2f)
@@ -226,8 +227,10 @@ fun PlotterScreen(
     val inputArea: @Composable () -> Unit = {
         ExpressionInput(
             value = draft,
+            caret = caret,
             error = draftError,
             onValueChange = viewModel::onDraftChange,
+            onCaretChange = viewModel::moveCaret,
             onPlot = viewModel::applyDraft
         )
     }

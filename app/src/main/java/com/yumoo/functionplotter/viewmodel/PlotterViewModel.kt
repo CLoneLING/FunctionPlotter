@@ -32,6 +32,10 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     private val _draft = MutableStateFlow(DEFAULT_EXPRESSION)
     val draft: StateFlow<String> = _draft.asStateFlow()
 
+    /** 插入点：自绘输入框用它画闪烁光标，键盘按键插在这个位置。 */
+    private val _caret = MutableStateFlow(DEFAULT_EXPRESSION.length)
+    val caret: StateFlow<Int> = _caret.asStateFlow()
+
     val showGrid = repository.showGrid
     val showAxisLabels = repository.showAxisLabels
     val sampleStep = repository.sampleStep
@@ -59,6 +63,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
             val restoredSelection = restored.firstOrNull { it.id == savedId } ?: restored.first()
             _selectedId.value = restoredSelection.id
             _draft.value = savedDraft.ifBlank { restoredSelection.expression }
+            _caret.value = _draft.value.length
             nextId = (restored.maxOfOrNull { it.id } ?: 0L) + 1L
 
             // 3. 函数列表与选中项：低频变化，立即写
@@ -91,22 +96,41 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onDraftChange(value: String) {
         _draft.value = value
+        _caret.value = value.length
+    }
+
+    /** 把插入点挪到 index（点击输入框时调用）。 */
+    fun moveCaret(index: Int) {
+        _caret.value = index.coerceIn(0, _draft.value.length)
+    }
+
+    private fun insertAtCaret(text: String) {
+        val current = _draft.value
+        val at = _caret.value.coerceIn(0, current.length)
+        _draft.value = current.substring(0, at) + text + current.substring(at)
+        _caret.value = at + text.length
     }
 
     fun appendToDraft(value: String) {
-        _draft.value += value
+        insertAtCaret(value)
     }
 
     fun replaceDraft(value: String) {
         _draft.value = value
+        _caret.value = value.length
     }
 
     fun backspace() {
-        _draft.value = _draft.value.dropLast(1)
+        val current = _draft.value
+        val at = _caret.value.coerceIn(0, current.length)
+        if (at <= 0) return
+        _draft.value = current.removeRange(at - 1, at)
+        _caret.value = at - 1
     }
 
     fun clearDraft() {
         _draft.value = ""
+        _caret.value = 0
     }
 
     /**
@@ -129,6 +153,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
         _functions.value = _functions.value + PlotFunction(id = id, expression = "", colorArgb = color)
         _selectedId.value = id
         _draft.value = ""
+        _caret.value = 0
     }
 
     /**
@@ -165,6 +190,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
         current.firstOrNull { it.expression.isNotBlank() }?.let {
             _selectedId.value = it.id
             _draft.value = it.expression
+            _caret.value = it.expression.length
         }
         return added
     }
@@ -172,6 +198,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
     fun selectFunction(id: Long) {
         _selectedId.value = id
         _draft.value = _functions.value.firstOrNull { it.id == id }?.expression ?: ""
+        _caret.value = _draft.value.length
     }
 
     fun removeFunction(id: Long) {
@@ -181,6 +208,7 @@ class PlotterViewModel(app: Application) : AndroidViewModel(app) {
             val first = _functions.value.firstOrNull() ?: return
             _selectedId.value = first.id
             _draft.value = first.expression
+            _caret.value = first.expression.length
         }
     }
 
