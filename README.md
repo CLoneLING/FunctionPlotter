@@ -12,6 +12,7 @@
 当前版本：**1.6.4**（versionCode 20261046）
 
 **官网** <https://functionplotter.dpdns.org>
+
 **演示视频** [B站](https://www.bilibili.com/video/BV1gLxu65EKe)
 
 ---
