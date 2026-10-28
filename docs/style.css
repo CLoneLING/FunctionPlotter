@@ -613,6 +613,8 @@ main{position:relative;z-index:1}
   .op{display:none}
 }
 
+[hidden] { display: none !important; }
+
 /* 图片不可拖拽 / 不可右键另存（配合 worker 的防盗链） */
 img {
   -webkit-user-drag: none;
