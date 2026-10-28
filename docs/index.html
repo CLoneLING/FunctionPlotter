@@ -23,13 +23,17 @@
 </head>
 <body>
 
+<!-- 背景：漂浮的立体运算符 -->
+<div class="ops" id="ops" aria-hidden="true"></div>
+
 <header class="nav">
   <a class="brand" href="/">
-    <img class="brand-icon" src="/assets/icon-192.png" width="30" height="30" alt="FunctionPlotter 图标">
+    <img class="brand-icon" src="/assets/icon-192.png" width="32" height="32" alt="FunctionPlotter 图标">
     <span class="brand-name">FunctionPlotter</span>
   </a>
   <nav class="nav-links">
     <a href="#features">功能</a>
+    <a href="#showcase">界面</a>
     <a href="#video">视频</a>
     <a href="#download">下载</a>
     <a href="https://github.com/CLoneLING/FunctionPlotter" target="_blank" rel="noopener">GitHub ↗</a>
@@ -52,77 +56,118 @@
       </div>
       <p class="fineprint">Android 8.0 及以上 · 无广告 · MIT 开源协议</p>
     </div>
-    <div class="hero-shot">
-      <img src="/assets/cake.webp" width="540" height="1200" alt="FunctionPlotter 用九条方程画出生日蛋糕" loading="eager">
+
+    <div class="hero-stage">
+      <div class="hero-stack" aria-hidden="true">
+        <span class="sheet sheet-3"></span>
+        <span class="sheet sheet-2"></span>
+      </div>
+      <figure class="hero-shot glass">
+        <img src="/assets/cake.webp" width="540" height="1200" alt="FunctionPlotter 用九条方程画出生日蛋糕">
+      </figure>
     </div>
   </section>
 
   <section id="features" class="section">
     <h2>它替你算的那些事</h2>
     <div class="grid">
-      <article class="card">
+      <article class="card glass">
         <h3>自定数学键盘</h3>
         <p>不依赖系统输入法，π、根号、上下标、区间符号都在手边，手机上也能快速输入。</p>
       </article>
-      <article class="card">
+      <article class="card glass">
         <h3>交点与求根</h3>
         <p>多条曲线同时绘制，交点自动标记并给出坐标；输入方程直接列出所有实根。</p>
       </article>
-      <article class="card">
+      <article class="card glass">
         <h3>区间求值</h3>
         <p>给定 x 区间算出值域，给定 y 区间反解 x 的取值，周期解会自动写成 k·T 形式。</p>
       </article>
-      <article class="card">
+      <article class="card glass">
         <h3>批量导入</h3>
         <p>粘贴一整段文本，自动挑出其中的表达式，支持 y=、f(x)=、方程、LaTeX 与序号列表。</p>
       </article>
-      <article class="card">
+      <article class="card glass">
         <h3>大屏双栏</h3>
         <p>平板上自动分成左右两栏：左边输入与说明，右边整屏画布。</p>
       </article>
-      <article class="card">
+      <article class="card glass">
         <h3>深色与护眼</h3>
         <p>跟随系统或手动切换深色，浅色下可开启夜间暖色，长时间盯图不刺眼。</p>
       </article>
     </div>
   </section>
 
-  <section id="shots" class="section">
+  <section id="showcase" class="section">
     <h2>屏幕里的样子</h2>
-    <div class="shots">
-      <figure>
-        <img src="/assets/light.webp" width="540" height="1200" alt="浅色主题下的 sin(x) 曲线" loading="lazy">
-        <figcaption>浅色主题</figcaption>
-      </figure>
-      <figure>
-        <img src="/assets/calc.webp" width="540" height="1200" alt="区间求值：x 在 1 到 3 之间时 y 的取值范围" loading="lazy">
-        <figcaption>区间求值</figcaption>
-      </figure>
-      <figure>
-        <img src="/assets/cake.webp" width="540" height="1200" alt="九条方程叠加出的生日蛋糕" loading="lazy">
-        <figcaption>九条方程 = 一个蛋糕</figcaption>
-      </figure>
-    </div>
-  </section>
 
-  <section class="section split">
-    <div class="split-copy">
-      <h2>换到大屏，自动变两栏</h2>
-      <p>横屏或平板上，输入、说明与画布并排显示，画布独占右侧整块区域，不用来回切换。</p>
-      <ul class="ticks">
-        <li>同一份数据，手机与平板无缝衔接</li>
-        <li>拖动平移、双指缩放、点按读数</li>
-        <li>定义域与交点信息固定在画布左下角</li>
-      </ul>
+    <!-- 手机端轮播 -->
+    <div class="deck-wrap" data-deck="phone">
+      <div class="deck" id="phone-deck">
+        <figure class="deck-item glass" data-theme="light">
+          <img src="/assets/light.webp" width="540" height="1200" alt="浅色主题下的 sin(x) 曲线">
+          <figcaption>浅色主题</figcaption>
+        </figure>
+        <figure class="deck-item glass" data-theme="dark">
+          <img src="/assets/calc.webp" width="540" height="1200" alt="区间求值：x 在 1 到 3 之间时 y 的取值范围">
+          <figcaption>区间求值</figcaption>
+        </figure>
+        <figure class="deck-item glass" data-theme="dark">
+          <img src="/assets/inter.webp" width="540" height="1200" alt="两条曲线与自动标出的交点">
+          <figcaption>交点自动标出</figcaption>
+        </figure>
+        <figure class="deck-item glass" data-theme="dark">
+          <img src="/assets/import.webp" width="540" height="1200" alt="批量导入：一次识别九条方程">
+          <figcaption>九条方程一次导入</figcaption>
+        </figure>
+        <figure class="deck-item glass" data-theme="dark">
+          <img src="/assets/cake.webp" width="540" height="1200" alt="九条方程叠加出的生日蛋糕">
+          <figcaption>九条方程 = 一个蛋糕</figcaption>
+        </figure>
+      </div>
+      <div class="deck-ctl">
+        <button class="round" type="button" data-dir="-1" aria-label="上一张">‹</button>
+        <div class="dots" id="phone-dots" role="tablist" aria-label="手机截图"></div>
+        <button class="round" type="button" data-dir="1" aria-label="下一张">›</button>
+      </div>
     </div>
-    <div class="split-shot">
-      <img src="/assets/tablet.webp" width="960" height="800" alt="平板上的双栏布局" loading="lazy">
+
+    <!-- 平板端：三种主题叠成柱，切换时滚动 -->
+    <div class="drum-wrap">
+      <div class="drum-copy">
+        <h3>同一界面，三种主题</h3>
+        <p>浅色、深色、夜间暖色随时切换；横屏或平板上自动分成左右两栏，画布独占右侧整块区域。</p>
+        <div class="drum-tabs" id="drum-tabs" role="tablist" aria-label="主题">
+          <button class="chip glass is-on" type="button" data-i="0" role="tab">浅色</button>
+          <button class="chip glass" type="button" data-i="1" role="tab">深色</button>
+          <button class="chip glass" type="button" data-i="2" role="tab">夜间暖色</button>
+        </div>
+        <ul class="ticks">
+          <li>同一份数据，手机与平板无缝衔接</li>
+          <li>拖动平移、双指缩放、点按读数</li>
+          <li>定义域与交点信息固定在画布左下角</li>
+        </ul>
+      </div>
+      <div class="drum" id="drum">
+        <figure class="drum-item glass is-on" data-i="0">
+          <img src="/assets/tablet-light.webp" width="1200" height="1000" alt="平板浅色主题下的双栏布局">
+          <figcaption>浅色</figcaption>
+        </figure>
+        <figure class="drum-item glass" data-i="1">
+          <img src="/assets/tablet-dark.webp" width="1200" height="1000" alt="平板深色主题下的双栏布局">
+          <figcaption>深色</figcaption>
+        </figure>
+        <figure class="drum-item glass" data-i="2">
+          <img src="/assets/tablet-warm.webp" width="1200" height="1000" alt="平板夜间暖色下的双栏布局">
+          <figcaption>夜间暖色</figcaption>
+        </figure>
+      </div>
     </div>
   </section>
 
   <section id="video" class="section">
     <h2>看看它怎么用</h2>
-    <a class="video-card" href="https://www.bilibili.com/video/BV1gLxu65EKe" target="_blank" rel="noopener">
+    <a class="video-card glass" href="https://www.bilibili.com/video/BV1gLxu65EKe" target="_blank" rel="noopener">
       <span class="video-play" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
       </span>
@@ -139,7 +184,7 @@
 
   <section id="download" class="section download">
     <h2>下载</h2>
-    <div class="download-card">
+    <div class="download-card glass">
       <dl>
         <div><dt>当前版本</dt><dd id="dl-ver">1.6.3</dd></div>
         <div><dt>安装包大小</dt><dd id="dl-size">12.2 MB</dd></div>
@@ -160,7 +205,7 @@
 
   <section id="contact" class="section">
     <h2>联系作者</h2>
-    <div class="contact-card">
+    <div class="contact-card glass">
       <div class="contact-copy">
         <p class="contact-line">用着有问题、想要什么功能，或者只是想聊聊，都可以直接找我。</p>
         <p class="contact-qq">QQ <strong id="qq-number">926087878</strong></p>
@@ -200,77 +245,211 @@
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  // 复制 QQ 号
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 背景漂浮运算符 ---------- */
+  (function () {
+    var layer = document.getElementById('ops');
+    if (!layer) return;
+    var glyphs = ['+', '−', '×', '÷', '=', 'π', '√', '∑', 'ƒ(x)', 'x²', '∫', '%'];
+    var count = window.innerWidth < 720 ? 8 : 13;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < count; i++) {
+      var s = document.createElement('span');
+      var g = glyphs[i % glyphs.length];
+      s.textContent = g;
+      s.className = 'op' + (i % 4 === 0 ? ' op-big' : '');
+      s.style.left = (Math.random() * 96).toFixed(2) + '%';
+      s.style.top = (Math.random() * 96).toFixed(2) + '%';
+      s.style.fontSize = (38 + Math.random() * 78).toFixed(0) + 'px';
+      s.style.setProperty('--rz', (Math.random() * 40 - 20).toFixed(0) + 'deg');
+      s.style.setProperty('--dx', (Math.random() * 30 - 15).toFixed(0) + 'px');
+      s.style.setProperty('--dy', (-20 - Math.random() * 34).toFixed(0) + 'px');
+      s.style.animationDuration = (26 + Math.random() * 34).toFixed(1) + 's';
+      s.style.animationDelay = (-Math.random() * 30).toFixed(1) + 's';
+      s.style.opacity = (0.035 + Math.random() * 0.045).toFixed(3);
+      frag.appendChild(s);
+    }
+    layer.appendChild(frag);
+  })();
+
+  /* ---------- 手机端轮播（3D 卡片流） ---------- */
+  (function () {
+    var deck = document.getElementById('phone-deck');
+    var dots = document.getElementById('phone-dots');
+    var wrap = document.querySelector('[data-deck="phone"]');
+    if (!deck || !dots || !wrap) return;
+
+    var items = Array.prototype.slice.call(deck.querySelectorAll('.deck-item'));
+    var index = 0, timer = null, dragging = false, startX = 0, dx = 0;
+
+    items.forEach(function (_, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'dot';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', '第 ' + (i + 1) + ' 张');
+      b.addEventListener('click', function () { go(i); });
+      dots.appendChild(b);
+    });
+    var dotEls = Array.prototype.slice.call(dots.children);
+
+    function render(offsetPx) {
+      var n = items.length;
+      items.forEach(function (el, i) {
+        var raw = i - index;
+        var off = ((raw + n / 2 + n) % n) - n / 2;   /* -2..2 环形 */
+        var clamped = Math.max(-2, Math.min(2, off));
+        var abs = Math.abs(clamped);
+        var scale = 1 - abs * 0.115;
+        var shift = clamped * 196 + (offsetPx || 0);
+        el.classList.toggle('is-on', clamped === 0);
+        el.style.transform =
+          'translate(calc(-50% + ' + shift + 'px), ' + (abs * 10) + 'px) ' +
+          'rotateY(' + (-clamped * 13) + 'deg) scale(' + scale + ')';
+        el.style.zIndex = String(100 - abs);
+        el.style.opacity = abs > 1.6 ? '0' : String(1 - abs * 0.24);
+        el.style.filter = abs === 0 ? 'none' : 'saturate(.7) brightness(.72)';
+        el.style.pointerEvents = clamped === 0 ? 'auto' : 'none';
+      });
+      dotEls.forEach(function (d, i) { d.classList.toggle('is-on', i === index); });
+    }
+
+    function go(i) {
+      index = (i + items.length) % items.length;
+      render(0);
+      restart();
+    }
+
+    function restart() {
+      if (reduceMotion) return;
+      clearInterval(timer);
+      timer = setInterval(function () { go(index + 1); }, 4200);
+    }
+
+    wrap.querySelectorAll('.round').forEach(function (btn) {
+      btn.addEventListener('click', function () { go(index + Number(btn.dataset.dir)); });
+    });
+
+    wrap.addEventListener('pointerenter', function () { clearInterval(timer); });
+    wrap.addEventListener('pointerleave', function () { restart(); });
+
+    deck.addEventListener('pointerdown', function (e) {
+      dragging = true; startX = e.clientX; dx = 0;
+      deck.setPointerCapture(e.pointerId);
+      clearInterval(timer);
+    });
+    deck.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      dx = (e.clientX - startX) * 0.55;
+      render(dx);
+    });
+    deck.addEventListener('pointerup', function () {
+      if (!dragging) return;
+      dragging = false;
+      if (Math.abs(dx) > 46) { go(index + (dx > 0 ? -1 : 1)); }
+      else { render(0); restart(); }
+    });
+    deck.addEventListener('pointercancel', function () {
+      dragging = false; render(0); restart();
+    });
+
+    render(0);
+    restart();
+  })();
+
+  /* ---------- 平板端：三种主题叠成柱，切换时滚动 ---------- */
+  (function () {
+    var drum = document.getElementById('drum');
+    var tabs = document.getElementById('drum-tabs');
+    if (!drum || !tabs) return;
+    var items = Array.prototype.slice.call(drum.querySelectorAll('.drum-item'));
+    var chips = Array.prototype.slice.call(tabs.querySelectorAll('.chip'));
+    var cur = 0, timer = null;
+
+    function set(i) {
+      cur = i;
+      items.forEach(function (el, k) {
+        var off = k - cur;
+        var abs = Math.abs(off);
+        el.classList.toggle('is-on', off === 0);
+        el.style.transform = 'translateY(' + (off * 32) + 'px) translateZ(' + (-abs * 120) + 'px) rotateX(' + (off * -6) + 'deg) scale(' + (1 - abs * 0.045) + ')';
+        el.style.zIndex = String(60 - abs);
+        el.style.opacity = abs > 2 ? '0' : String(1 - abs * 0.42);
+        el.style.filter = off === 0 ? 'none' : 'brightness(.7) saturate(.8)';
+      });
+      chips.forEach(function (c, k) { c.classList.toggle('is-on', k === cur); });
+    }
+
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () { set(Number(chip.dataset.i)); restart(); });
+    });
+
+    function restart() {
+      if (reduceMotion) return;
+      clearInterval(timer);
+      timer = setInterval(function () { set((cur + 1) % items.length); }, 5200);
+    }
+
+    drum.addEventListener('pointerenter', function () { clearInterval(timer); });
+    drum.addEventListener('pointerleave', restart);
+
+    set(0);
+    restart();
+  })();
+
+  /* ---------- 复制 QQ ---------- */
   (function () {
     var btn = document.getElementById('copy-qq');
     var toast = document.getElementById('toast');
-    var timer = null;
+    var t = null;
     function showToast(text) {
       toast.textContent = text;
       toast.classList.add('show');
-      clearTimeout(timer);
-      timer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+      clearTimeout(t);
+      t = setTimeout(function () { toast.classList.remove('show'); }, 1800);
     }
+    if (!btn) return;
     btn.addEventListener('click', function () {
       var qq = btn.dataset.qq;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(qq).then(
-          function () { showToast('已复制 QQ 号 ' + qq); },
-          function () { fallback(qq); }
-        );
-      } else {
-        fallback(qq);
-      }
-      function fallback(text) {
+      function fallback() {
         var el = document.createElement('textarea');
-        el.value = text;
-        el.setAttribute('readonly', '');
-        el.style.position = 'fixed';
-        el.style.opacity = '0';
-        document.body.appendChild(el);
-        el.select();
-        try { document.execCommand('copy'); showToast('已复制 QQ 号 ' + text); }
-        catch (e) { showToast('复制失败，请手动记下 ' + text); }
+        el.value = qq; el.setAttribute('readonly', '');
+        el.style.position = 'fixed'; el.style.opacity = '0';
+        document.body.appendChild(el); el.select();
+        try { document.execCommand('copy'); showToast('已复制 QQ 号 ' + qq); }
+        catch (e) { showToast('复制失败，请手动记下 ' + qq); }
         document.body.removeChild(el);
       }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(qq).then(function () { showToast('已复制 QQ 号 ' + qq); }, fallback);
+      } else { fallback(); }
     });
   })();
 
-  // 从 release.json 读取版本、体积、蓝奏云链接与提取码
+  /* ---------- 从 release.json 读取版本/体积/蓝奏云 ---------- */
   (function () {
     fetch('/release.json', { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d) return;
-        if (d.version) {
-          setText('ver', d.version);
-          setText('dl-ver', d.version);
-        }
+        if (d.version) { setText('ver', d.version); setText('dl-ver', d.version); }
         var sizeText = d.apkSizeText || (d.apkSize ? (d.apkSize / 1048576).toFixed(1) + ' MB' : null);
         if (sizeText) {
           setText('size', sizeText.replace(/\.\d+ MB$/, ' MB'));
           setText('dl-size', sizeText);
         }
-        if (d.htmlUrl) {
-          var gh = document.getElementById('dl-github');
-          if (gh) gh.href = d.htmlUrl;
-        }
-        if (d.apkDownloadUrl) {
-          var primary = document.getElementById('dl-primary');
-          if (primary) primary.href = d.apkDownloadUrl;
-        }
+        if (d.htmlUrl) { var gh = document.getElementById('dl-github'); if (gh) gh.href = d.htmlUrl; }
+        if (d.apkDownloadUrl) { var p = document.getElementById('dl-primary'); if (p) p.href = d.apkDownloadUrl; }
         if (d.lanzou && d.lanzou.url) {
           var lz = document.getElementById('dl-lanzou');
           if (lz) lz.href = d.lanzou.url;
           setText('lanzou-code', d.lanzou.code ? '（提取码 ' + d.lanzou.code + '）' : '');
         }
       })
-      .catch(function () { /* 静态兜底值已经写在 HTML 里 */ });
+      .catch(function () { /* HTML 内已有静态兜底值 */ });
 
-    function setText(id, text) {
-      var el = document.getElementById(id);
-      if (el) el.textContent = text;
-    }
+    function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
   })();
 </script>
 </body>
