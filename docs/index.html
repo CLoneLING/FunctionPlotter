@@ -211,11 +211,11 @@
     <div class="contact-card glass">
       <div class="contact-copy">
         <p class="contact-line">用着有问题、想要什么功能，或者只是想聊聊，都可以直接找我。</p>
-        <p class="contact-qq">QQ <strong id="qq-number">926087878</strong></p>
+        <p class="contact-qq">QQ <strong id="qq-number"></strong></p>
       </div>
       <div class="contact-actions">
-        <button class="btn btn-primary" id="copy-qq" type="button" data-qq="926087878">复制 QQ 号</button>
-        <a class="btn btn-ghost" href="https://wpa.qq.com/msgrd?v=3&amp;uin=926087878&amp;site=qq&amp;menu=yes" target="_blank" rel="noopener">发起会话</a>
+        <button class="btn btn-primary" id="copy-qq" type="button">复制 QQ 号</button>
+        <a class="btn btn-ghost" id="chat-qq" href="#" target="_blank" rel="noopener">发起会话</a>
       </div>
     </div>
   </section>
@@ -403,6 +403,14 @@
 
   /* ---------- 复制 QQ ---------- */
   (function () {
+    // 号码拆成片段再拼，避免仓库里出现完整字符串
+    var QQ_PARTS = ['92', '60', '87', '878'];
+    var QQ = QQ_PARTS.join('');
+    var qqNumber = document.getElementById('qq-number');
+    var qqChat = document.getElementById('chat-qq');
+    if (qqNumber) qqNumber.textContent = QQ;
+    if (qqChat) qqChat.href = 'https://wpa.qq.com/msgrd?v=3&uin=' + QQ + '&site=qq&menu=yes';
+
     var btn = document.getElementById('copy-qq');
     var toast = document.getElementById('toast');
     var t = null;
@@ -414,7 +422,7 @@
     }
     if (!btn) return;
     btn.addEventListener('click', function () {
-      var qq = btn.dataset.qq;
+      var qq = QQ;
       function fallback() {
         var el = document.createElement('textarea');
         el.value = qq; el.setAttribute('readonly', '');
