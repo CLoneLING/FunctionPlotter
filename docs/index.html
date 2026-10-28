@@ -189,15 +189,15 @@
     <h2>下载</h2>
     <div class="download-card glass">
       <dl>
-        <div><dt>当前版本</dt><dd id="dl-ver">1.6.3</dd></div>
+        <div><dt>当前版本</dt><dd id="dl-ver">1.6.4</dd></div>
         <div><dt>安装包大小</dt><dd id="dl-size">12.2 MB</dd></div>
         <div><dt>系统要求</dt><dd>Android 8.0+</dd></div>
         <div><dt>开源协议</dt><dd>MIT</dd></div>
       </dl>
       <div class="download-actions">
         <a class="btn btn-primary" id="dl-github" href="https://github.com/CLoneLING/FunctionPlotter/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>
-        <a class="btn btn-ghost" id="dl-lanzou" href="https://cloneling.lanzouq.com/i0R1t4dmimqb" target="_blank" rel="noopener">
-          蓝奏云<span id="lanzou-code">（提取码 546u）</span>
+        <a class="btn btn-ghost" id="dl-lanzou" href="#" target="_blank" rel="noopener" hidden>
+          蓝奏云<span id="lanzou-code"></span>
         </a>
       </div>
       <p class="fineprint">
@@ -412,14 +412,14 @@
     if (qqChat) qqChat.href = 'https://wpa.qq.com/msgrd?v=3&uin=' + QQ + '&site=qq&menu=yes';
 
     // 图片不提供右键另存 / 拖拽
-    document.addEventListener(''contextmenu'', function (e) {
-      if (e.target && e.target.tagName === ''IMG'') e.preventDefault();
+    document.addEventListener('contextmenu', function (e) {
+      if (e.target && e.target.tagName === 'IMG') e.preventDefault();
     }, { passive: false });
-    document.addEventListener(''dragstart'', function (e) {
-      if (e.target && e.target.tagName === ''IMG'') e.preventDefault();
+    document.addEventListener('dragstart', function (e) {
+      if (e.target && e.target.tagName === 'IMG') e.preventDefault();
     });
 
-    var btn = document.getElementById(''copy-qq'');
+    var btn = document.getElementById('copy-qq');
     var toast = document.getElementById('toast');
     var t = null;
     function showToast(text) {
@@ -460,10 +460,12 @@
         }
         if (d.htmlUrl) { var gh = document.getElementById('dl-github'); if (gh) gh.href = d.htmlUrl; }
         if (d.apkDownloadUrl) { var p = document.getElementById('dl-primary'); if (p) p.href = d.apkDownloadUrl; }
+        var lz = document.getElementById('dl-lanzou');
         if (d.lanzou && d.lanzou.url) {
-          var lz = document.getElementById('dl-lanzou');
-          if (lz) lz.href = d.lanzou.url;
+          if (lz) { lz.href = d.lanzou.url; lz.hidden = false; }
           setText('lanzou-code', d.lanzou.code ? '（提取码 ' + d.lanzou.code + '）' : '');
+        } else if (lz) {
+          lz.hidden = true;
         }
       })
       .catch(function () { /* HTML 内已有静态兜底值 */ });
