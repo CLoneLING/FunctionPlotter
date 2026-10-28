@@ -1,0 +1,40 @@
+name: 同步站点数据
+
+# 每次发版后，把最新 release 的版本号、体积、蓝奏云链接与提取码写进 docs/release.json，
+# 提交后 Cloudflare Workers 会基于这次 push 自动重新部署。
+on:
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 生成 release.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/site-data.mjs
+
+      - name: 提交变更
+        run: |
+          if git diff --quiet -- docs/release.json; then
+            echo "release.json 无变化"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/release.json
+          git commit -m "chore(site): 同步最新 release 数据"
+          git push

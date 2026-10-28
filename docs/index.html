@@ -11,19 +11,22 @@
 <meta property="og:description" content="一行式子立刻出图，支持交点、求根、区间求值、批量导入。免费开源，12 MB，离线可用。">
 <meta property="og:url" content="https://functionplotter.dpdns.org/">
 <meta property="og:image" content="https://functionplotter.dpdns.org/assets/og.webp">
-<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/assets/favicon-64.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
 <header class="nav">
   <a class="brand" href="/">
-    <span class="brand-mark">f(x)</span>
+    <img class="brand-icon" src="/assets/icon-192.png" width="30" height="30" alt="FunctionPlotter 图标">
     <span class="brand-name">FunctionPlotter</span>
   </a>
   <nav class="nav-links">
     <a href="#features">功能</a>
-    <a href="#shots">截图</a>
+    <a href="#video">视频</a>
     <a href="#download">下载</a>
     <a href="https://github.com/CLoneLING/FunctionPlotter" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
@@ -33,15 +36,15 @@
 
   <section class="hero">
     <div class="hero-copy">
-      <p class="badge">v1.6.3 · 12 MB · 离线可用</p>
+      <p class="badge">v<span id="ver">1.6.3</span> · <span id="size">12 MB</span> · 离线可用</p>
       <h1>一行式子，<br>画出一条函数曲线</h1>
       <p class="lede">
         免费的 Android 函数绘图工具。多函数叠加、交点自动标出、方程直接给根、
         给区间算值域，全部离线完成。
       </p>
       <div class="cta">
-        <a class="btn btn-primary" href="https://github.com/CLoneLING/FunctionPlotter/releases/latest" target="_blank" rel="noopener">下载 APK</a>
-        <a class="btn btn-ghost" href="https://github.com/CLoneLING/FunctionPlotter" target="_blank" rel="noopener">查看源码</a>
+        <a class="btn btn-primary" id="dl-primary" href="https://github.com/CLoneLING/FunctionPlotter/releases/latest" target="_blank" rel="noopener">下载 APK</a>
+        <a class="btn btn-ghost" href="#video">看看怎么用</a>
       </div>
       <p class="fineprint">Android 8.0 及以上 · 无广告 · MIT 开源协议</p>
     </div>
@@ -113,22 +116,55 @@
     </div>
   </section>
 
+  <section id="video" class="section">
+    <h2>看看它怎么用</h2>
+    <a class="video-card" href="https://www.bilibili.com/video/BV1gLxu65EKe" target="_blank" rel="noopener">
+      <span class="video-play" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+      <span class="video-meta">
+        <strong>FunctionPlotter 上手演示</strong>
+        <span>B 站 · BV1gLxu65EKe</span>
+      </span>
+      <span class="video-arrow">↗</span>
+    </a>
+    <p class="fineprint">
+      更多内容在 <a href="https://space.bilibili.com/1065292222" target="_blank" rel="noopener">B 站作者空间</a>。
+    </p>
+  </section>
+
   <section id="download" class="section download">
     <h2>下载</h2>
     <div class="download-card">
       <dl>
-        <div><dt>当前版本</dt><dd>1.6.3</dd></div>
-        <div><dt>安装包大小</dt><dd>12.2 MB</dd></div>
+        <div><dt>当前版本</dt><dd id="dl-ver">1.6.3</dd></div>
+        <div><dt>安装包大小</dt><dd id="dl-size">12.2 MB</dd></div>
         <div><dt>系统要求</dt><dd>Android 8.0+</dd></div>
         <div><dt>开源协议</dt><dd>MIT</dd></div>
       </dl>
       <div class="download-actions">
-        <a class="btn btn-primary" href="https://github.com/CLoneLING/FunctionPlotter/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>
-        <a class="btn btn-ghost" href="https://cloneling.lanzouq.com/i9Rrp4d82cxi" target="_blank" rel="noopener">蓝奏云（提取码 azfx）</a>
+        <a class="btn btn-primary" id="dl-github" href="https://github.com/CLoneLING/FunctionPlotter/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>
+        <a class="btn btn-ghost" id="dl-lanzou" href="https://cloneling.lanzouq.com/i0R1t4dmimqb" target="_blank" rel="noopener">
+          蓝奏云<span id="lanzou-code">（提取码 546u）</span>
+        </a>
       </div>
       <p class="fineprint">
         安装时需允许「安装未知来源应用」。应用内可检查更新，下载完成后会自动校验 SHA-256。
       </p>
+    </div>
+  </section>
+
+  <section id="contact" class="section">
+    <h2>联系作者</h2>
+    <div class="contact-card">
+      <div class="contact-copy">
+        <p class="contact-line">用着有问题、想要什么功能，或者只是想聊聊，都可以直接找我。</p>
+        <p class="contact-qq">QQ <strong id="qq-number">926087878</strong></p>
+      </div>
+      <div class="contact-actions">
+        <button class="btn btn-primary" id="copy-qq" type="button" data-qq="926087878">复制 QQ 号</button>
+        <a class="btn btn-ghost" href="https://wpa.qq.com/msgrd?v=3&amp;uin=926087878&amp;site=qq&amp;menu=yes" target="_blank" rel="noopener">发起会话</a>
+      </div>
     </div>
   </section>
 
@@ -149,12 +185,89 @@
   <p class="footer-links">
     <a href="https://github.com/CLoneLING/FunctionPlotter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/CLoneLING/FunctionPlotter/releases" target="_blank" rel="noopener">Releases</a>
+    <a href="https://www.bilibili.com/video/BV1gLxu65EKe" target="_blank" rel="noopener">B 站视频</a>
+    <a href="https://space.bilibili.com/1065292222" target="_blank" rel="noopener">B 站空间</a>
     <a href="https://github.com/CLoneLING/FunctionPlotter/blob/master/LICENSE" target="_blank" rel="noopener">License</a>
   </p>
 </footer>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // 复制 QQ 号
+  (function () {
+    var btn = document.getElementById('copy-qq');
+    var toast = document.getElementById('toast');
+    var timer = null;
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(timer);
+      timer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+    }
+    btn.addEventListener('click', function () {
+      var qq = btn.dataset.qq;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(qq).then(
+          function () { showToast('已复制 QQ 号 ' + qq); },
+          function () { fallback(qq); }
+        );
+      } else {
+        fallback(qq);
+      }
+      function fallback(text) {
+        var el = document.createElement('textarea');
+        el.value = text;
+        el.setAttribute('readonly', '');
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        try { document.execCommand('copy'); showToast('已复制 QQ 号 ' + text); }
+        catch (e) { showToast('复制失败，请手动记下 ' + text); }
+        document.body.removeChild(el);
+      }
+    });
+  })();
+
+  // 从 release.json 读取版本、体积、蓝奏云链接与提取码
+  (function () {
+    fetch('/release.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        if (d.version) {
+          setText('ver', d.version);
+          setText('dl-ver', d.version);
+        }
+        var sizeText = d.apkSizeText || (d.apkSize ? (d.apkSize / 1048576).toFixed(1) + ' MB' : null);
+        if (sizeText) {
+          setText('size', sizeText.replace(/\.\d+ MB$/, ' MB'));
+          setText('dl-size', sizeText);
+        }
+        if (d.htmlUrl) {
+          var gh = document.getElementById('dl-github');
+          if (gh) gh.href = d.htmlUrl;
+        }
+        if (d.apkDownloadUrl) {
+          var primary = document.getElementById('dl-primary');
+          if (primary) primary.href = d.apkDownloadUrl;
+        }
+        if (d.lanzou && d.lanzou.url) {
+          var lz = document.getElementById('dl-lanzou');
+          if (lz) lz.href = d.lanzou.url;
+          setText('lanzou-code', d.lanzou.code ? '（提取码 ' + d.lanzou.code + '）' : '');
+        }
+      })
+      .catch(function () { /* 静态兜底值已经写在 HTML 里 */ });
+
+    function setText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+  })();
 </script>
 </body>
 </html>
