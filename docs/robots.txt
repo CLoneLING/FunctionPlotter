@@ -1,0 +1,4 @@
+﻿User-agent: *
+Allow: /
+
+Sitemap: https://functionplotter.dpdns.org/sitemap.xml
