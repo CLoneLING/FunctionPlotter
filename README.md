@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
 
->该仓库目前由Deepseek AI自动化管理
+>该仓库目前由DeepSeek AI自动化管理
 
 当前版本：**1.6.4**（versionCode 20261046）
 
